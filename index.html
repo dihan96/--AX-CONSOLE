@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정산 AX 콘솔</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F6F4EE;
+    --surface:#FFFFFF;
+    --surface-alt:#FBF9F3;
+    --border:#E1DBC9;
+    --border-strong:#CFC7AE;
+    --text:#221F19;
+    --text-muted:#726C5C;
+    --text-faint:#9B9481;
+    --accent:#22478C;
+    --accent-strong:#17325F;
+    --accent-contrast:#FFFFFF;
+    --accent-soft:#E7ECF6;
+    --stamp:#9C3226;
+    --stamp-soft:#F5E4E0;
+    --success:#33754A;
+    --success-soft:#E4EFE6;
+    --warning:#93650F;
+    --warning-soft:#F5EAD4;
+    --shadow:0 1px 2px rgba(34,31,25,.06), 0 8px 24px -12px rgba(34,31,25,.18);
+    --font-display:'Noto Serif KR','Nanum Myeongjo',serif;
+    --font-body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    --font-mono:'IBM Plex Mono','Nanum Gothic Coding',monospace;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15171B;
+      --surface:#1D2025;
+      --surface-alt:#22262C;
+      --border:#343A42;
+      --border-strong:#454C56;
+      --text:#E8E5DA;
+      --text-muted:#A3A79C;
+      --text-faint:#767C74;
+      --accent:#7FA0E0;
+      --accent-strong:#9DB8EA;
+      --accent-contrast:#0E1420;
+      --accent-soft:#232D42;
+      --stamp:#E08276;
+      --stamp-soft:#3A2420;
+      --success:#7FC796;
+      --success-soft:#20302A;
+      --warning:#E3BD73;
+      --warning-soft:#3A3020;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15171B;
+    --surface:#1D2025;
+    --surface-alt:#22262C;
+    --border:#343A42;
+    --border-strong:#454C56;
+    --text:#E8E5DA;
+    --text-muted:#A3A79C;
+    --text-faint:#767C74;
+    --accent:#7FA0E0;
+    --accent-strong:#9DB8EA;
+    --accent-contrast:#0E1420;
+    --accent-soft:#232D42;
+    --stamp:#E08276;
+    --stamp-soft:#3A2420;
+    --success:#7FC796;
+    --success-soft:#20302A;
+    --warning:#E3BD73;
+    --warning-soft:#3A3020;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:14px;
+    line-height:1.55;
+    margin:0;
+  }
+  ::selection{background:var(--accent-soft);}
+  button{font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+  svg.icon{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---------- app shell: sidebar + main ---------- */
+  .app-shell{display:flex;min-height:100vh;align-items:stretch;}
+
+  .sidebar{
+    width:238px;flex:none;background:var(--surface);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;transition:width .15s ease;overflow:hidden;
+  }
+  .sidebar.collapsed{width:60px;}
+
+  .sidebar-header{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid var(--border);}
+  .brand-mark{
+    display:inline-flex;align-items:center;justify-content:center;flex:none;
+    width:32px;height:32px;border-radius:8px;background:var(--accent);color:var(--accent-contrast);
+    font-family:var(--font-display);font-weight:700;font-size:14px;
+  }
+  .brand-text{overflow:hidden;white-space:nowrap;}
+  .brand-text .name{font-family:var(--font-display);font-weight:700;font-size:14.5px;line-height:1.2;}
+  .brand-text .sub{font-size:11px;color:var(--text-muted);}
+  .sidebar.collapsed .brand-text{display:none;}
+
+  .sidebar-toggle{
+    margin-left:auto;flex:none;appearance:none;border:1px solid var(--border);background:var(--surface);
+    color:var(--text-muted);border-radius:7px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .sidebar-toggle:hover{color:var(--text);border-color:var(--border-strong);}
+  .sidebar.collapsed .sidebar-header{justify-content:center;padding:16px 0;}
+  .sidebar.collapsed .sidebar-toggle{margin-left:0;}
+
+  .sidebar-nav{flex:1;padding:10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
+  .nav-item{
+    display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+    border:none;background:transparent;color:var(--text-muted);
+    padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;
+  }
+  .nav-item:hover{background:var(--surface-alt);color:var(--text);}
+  .nav-item[aria-current="true"]{background:var(--accent-soft);color:var(--accent-strong);}
+  .nav-item .nav-label{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .nav-item .nav-badge{
+    margin-left:auto;flex:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;
+    background:var(--warning-soft);color:var(--warning);white-space:nowrap;
+  }
+  .sidebar.collapsed .nav-item{justify-content:center;padding:9px 0;}
+  .sidebar.collapsed .nav-label,.sidebar.collapsed .nav-badge{display:none;}
+
+  .sidebar-footer{padding:12px;border-top:1px solid var(--border);}
+  .sync-pill{
+    display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-muted);
+    border:1px solid var(--border);border-radius:100px;padding:6px 10px;background:var(--surface-alt);
+  }
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;}
+  .sync-pill[data-state="live"] .sync-dot{background:var(--success);}
+  .sync-pill[data-state="local"] .sync-dot{background:var(--warning);}
+  .sidebar.collapsed .sync-pill{justify-content:center;padding:6px;}
+  .sidebar.collapsed .sync-pill-text{display:none;}
+
+  .main{flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;}
+  .main-inner{max-width:1080px;margin:0 auto;padding:30px 32px 64px;}
+
+  .page-head{margin-bottom:20px;}
+  .page-head h1{font-family:var(--font-display);font-size:21px;font-weight:700;margin:0 0 4px;text-wrap:balance;}
+  .page-head p{color:var(--text-muted);font-size:12.5px;margin:0;}
+
+  .panel[hidden]{display:none;}
+
+  /* ---------- generic card ---------- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);}
+  .card-pad{padding:20px;}
+
+  /* ---------- summary stat row ---------- */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+  .stat-card .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;}
+  .stat-card .label{color:var(--text-muted);font-size:12px;margin-top:2px;}
+  .stat-card.warn .num{color:var(--stamp);}
+
+  /* ---------- manager tab toolbar ---------- */
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .chipset{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    appearance:none;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-muted);
+    font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:100px;cursor:pointer;
+  }
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+  .search-input{
+    border:1px solid var(--border-strong);border-radius:100px;padding:6px 14px;
+    background:var(--surface);min-width:200px;font-size:12.5px;color:var(--text);
+  }
+  .search-input:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
+
+  /* ---------- vendor table (담당자 관리) ---------- */
+  .table-wrap{overflow-x:auto;}
+  table.vendors{width:100%;border-collapse:collapse;font-size:13px;}
+  table.vendors th{
+    text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-faint);font-weight:600;padding:10px 14px;
+    border-bottom:1px solid var(--border-strong);white-space:nowrap;
+    position:sticky;top:0;background:var(--surface);
+  }
+  table.vendors td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.vendors tr:last-child td{border-bottom:none;}
+  table.vendors tr:hover td{background:var(--surface-alt);}
+  .vendor-name{font-weight:600;}
+  .vendor-name .no{color:var(--text-faint);font-weight:400;font-family:var(--font-mono);font-size:11.5px;margin-right:6px;}
+  .db-code{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);}
+  .partner-id{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+    padding:3px 9px;border-radius:100px;white-space:nowrap;
+  }
+  .badge.ok{background:var(--success-soft);color:var(--success);}
+  .badge.warn{background:var(--stamp-soft);color:var(--stamp);}
+  .note-flag{
+    display:inline-flex;width:16px;height:16px;border-radius:50%;
+    border:1px solid var(--border-strong);color:var(--text-faint);
+    font-size:10.5px;font-weight:700;align-items:center;justify-content:center;
+    margin-left:6px;cursor:help;flex:none;
+  }
+
+  select.mgr-select{
+    border:1px solid var(--border-strong);border-radius:8px;padding:5px 10px;background:var(--surface);
+    font-size:12.5px;font-weight:600;min-width:74px;
+  }
+  .row-status{font-size:11px;color:var(--text-faint);margin-left:8px;white-space:nowrap;}
+  .row-status.saving{color:var(--warning);}
+  .row-status.saved{color:var(--success);}
+  .row-status.error{color:var(--stamp);}
+
+  .banner{
+    display:flex;gap:10px;align-items:flex-start;padding:11px 16px;border-radius:10px;
+    font-size:12.5px;margin-bottom:16px;border:1px solid var(--border);
+  }
+  .banner.info{background:var(--accent-soft);border-color:transparent;color:var(--accent-strong);}
+  .banner.warn{background:var(--warning-soft);border-color:transparent;color:var(--warning);}
+
+  /* ---------- exec tab layout ---------- */
+  .exec-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;}
+  @media (max-width:900px){.exec-grid{grid-template-columns:1fr;}}
+
+  fieldset.group{border:1px solid var(--border);border-radius:10px;padding:14px 16px 16px;margin:0 0 14px;}
+  fieldset.group:last-child{margin-bottom:0;}
+  fieldset.group legend{
+    font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+    color:var(--text-muted);padding:0 6px;margin-left:-6px;
+  }
+  .field-row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label.field-label{font-size:12px;color:var(--text-muted);font-weight:600;}
+  select.ctl, input.ctl{
+    border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;
+    background:var(--surface);font-size:13px;min-width:120px;
+  }
+  input.ctl[type="number"]{min-width:64px;width:64px;}
+  .checkbox-grid{display:flex;flex-wrap:wrap;gap:8px 18px;}
+  .check-item{display:flex;align-items:center;gap:6px;font-size:13px;}
+  .check-item input{accent-color:var(--accent);}
+  .radio-group{display:flex;gap:14px;}
+  .radio-item{display:flex;align-items:center;gap:6px;font-size:13px;}
+  .radio-item input{accent-color:var(--accent);}
+  .hint{font-size:11.5px;color:var(--text-faint);margin-top:2px;}
+
+  /* vendor checklist */
+  .checklist-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap;}
+  .checklist-toolbar .count{font-size:12px;color:var(--text-muted);}
+  .link-btn{
+    appearance:none;border:none;background:none;color:var(--accent);font-size:12px;font-weight:600;
+    padding:0;cursor:pointer;
+  }
+  .link-btn:hover{text-decoration:underline;}
+  .vendor-checklist{
+    max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;
+  }
+  .vendor-check-row{
+    display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;
+  }
+  .vendor-check-row:last-child{border-bottom:none;}
+  .vendor-check-row.disabled{opacity:.55;}
+  .vendor-check-row input{accent-color:var(--accent);flex:none;}
+  .vendor-check-row .vname{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .vendor-check-row .vcode{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);flex:none;}
+  .vendor-check-row .vbadge{flex:none;}
+
+  /* ---------- right column: summary + actions ---------- */
+  .summary-card{margin-bottom:14px;}
+  .summary-line{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--border);}
+  .summary-line:last-child{border-bottom:none;}
+  .summary-line .k{color:var(--text-muted);}
+  .summary-line .v{font-weight:600;text-align:right;}
+
+  button.btn{
+    appearance:none;border:1px solid var(--border-strong);border-radius:9px;
+    background:var(--surface);color:var(--text);font-size:13px;font-weight:600;
+    padding:9px 15px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;justify-content:center;
+  }
+  button.btn:hover{border-color:var(--accent);}
+  button.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+  button.btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);}
+  button.btn:disabled{opacity:.45;cursor:not-allowed;}
+  button.btn:disabled:hover{border-color:var(--border-strong);}
+  button.btn.ghost{background:transparent;}
+  .btn-col{display:flex;flex-direction:column;gap:10px;}
+  .btn-col .btn-note{font-size:11px;color:var(--text-faint);margin-top:-4px;padding-left:2px;}
+
+  .run-log{
+    margin-top:14px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;
+    font-size:12px;
+  }
+  .run-log:empty{display:none;}
+  .run-log-row{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);}
+  .run-log-row:last-child{border-bottom:none;}
+  .run-log-row .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .run-log-row .state{flex:none;font-weight:600;}
+  .run-log-row.ok .state{color:var(--success);}
+  .run-log-row.skip .state{color:var(--warning);}
+  .run-log-row.error .state{color:var(--stamp);}
+  .run-log-row.pending .state{color:var(--text-faint);}
+  .run-summary{font-size:12.5px;font-weight:600;margin-top:10px;}
+
+  /* ---------- receipt / example preview ---------- */
+  .receipt{
+    background:var(--surface-alt);
+    border:1px dashed var(--border-strong);
+    border-radius:10px;
+    padding:16px 16px 14px;
+    position:relative;
+  }
+  .receipt::before{
+    content:"AX";
+    position:absolute;top:12px;right:14px;
+    width:32px;height:32px;border-radius:50%;
+    border:2px solid var(--stamp);color:var(--stamp);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-weight:700;font-size:11px;
+    transform:rotate(-14deg);opacity:.5;
+  }
+  .receipt h3{
+    font-family:var(--font-display);font-size:13.5px;font-weight:600;margin:0 0 8px;
+    padding-bottom:8px;border-bottom:1px dashed var(--border-strong);
+  }
+  .receipt pre{
+    font-family:var(--font-mono);font-size:11px;line-height:1.7;
+    white-space:pre-wrap;word-break:break-word;margin:0;color:var(--text);
+  }
+
+  /* ---------- Google 시트 동기화 placeholder tab ---------- */
+  .placeholder-card{padding:36px 28px;text-align:center;}
+  .placeholder-icon{
+    width:52px;height:52px;border-radius:14px;background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 16px;
+  }
+  .placeholder-card h2{font-family:var(--font-display);font-size:17px;margin:0 0 8px;}
+  .placeholder-card p{color:var(--text-muted);font-size:13px;max-width:440px;margin:0 auto 4px;}
+  .placeholder-status{
+    display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:11.5px;font-weight:700;
+    color:var(--warning);background:var(--warning-soft);padding:5px 12px;border-radius:100px;
+  }
+
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+  @media (prefers-reduced-motion:no-preference){
+    .chip,.badge,button.btn{transition:background-color .12s ease,border-color .12s ease,color .12s ease;}
+  }
+
+  /* ---------- read-only manager badge + sheet sync meta ---------- */
+  .mgr-badge{
+    display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;
+    padding:5px 12px;border-radius:100px;background:var(--surface-alt);border:1px solid var(--border);
+  }
+  .sheet-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-top:6px;}
+  .sheet-meta .link-btn{font-size:12px;}
+  .icon-btn-sm{
+    appearance:none;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-muted);
+    border-radius:7px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;
+  }
+  .icon-btn-sm:hover{color:var(--text);border-color:var(--accent);}
+  .icon-btn-sm.spinning svg{animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="brand-mark">정</span>
+      <div class="brand-text">
+        <div class="name">정산 AX 콘솔</div>
+        <div class="sub">미리디 · 정산 자동화</div>
+      </div>
+      <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="사이드바 접기/펼치기" title="사이드바 접기/펼치기">
+        <svg class="icon" id="sidebar-toggle-icon" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <button class="nav-item" data-panel="manager" aria-current="true" type="button">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.2 20c.2-2.7 2-4.8 4.3-5.3"/></svg>
+        <span class="nav-label">정산 담당자 관리</span>
+      </button>
+      <button class="nav-item" data-panel="exec" aria-current="false" type="button">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M8 3v3M16 3v3M3.5 10h17"/><path d="M9.5 14.3l2.4 2.4 4-4.4"/></svg>
+        <span class="nav-label">정산 실행</span>
+      </button>
+      <button class="nav-item" data-panel="sheets" aria-current="false" type="button">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5"/></svg>
+        <span class="nav-label">Google 시트 동기화</span>
+        <span class="nav-badge">준비중</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="sync-pill" id="sync-pill" data-state="connecting">
+        <span class="sync-dot"></span>
+        <span class="sync-pill-text" id="sync-pill-text">담당자 시트 확인 중…</span>
+      </span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+
+      <!-- ===================== PANEL: 정산 담당자 관리 ===================== -->
+      <section id="panel-manager" class="panel">
+        <div class="page-head">
+          <h1>정산 담당자 관리</h1>
+          <p>업체별 정산 담당자 배정 현황입니다. 담당자 변경은 이 화면이 아니라 아래 구글시트에서 직접 합니다 — 이 화면은 그 시트를 그대로 읽어와 보여주는 읽기 전용 화면입니다.</p>
+          <div class="sheet-meta">
+            <span id="sheet-sync-status">불러오는 중…</span>
+            <button class="icon-btn-sm" id="sheet-refresh-btn" type="button" title="다시 불러오기" aria-label="다시 불러오기">
+              <svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18.6 16M20 11V5M20 11h-6"/></svg>
+            </button>
+            <span>·</span>
+            <a class="link-btn" href="https://docs.google.com/spreadsheets/d/1s3TcMKXI8iqonkAMUMiwrT-tyWlK999m7i44ePxq71g/edit" target="_blank" rel="noopener">구글시트에서 편집 ↗</a>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card"><div class="num" id="stat-total">–</div><div class="label">전체 업체</div></div>
+          <div class="stat-card"><div class="num" id="stat-matched">–</div><div class="label">PARTNER_ID 확보</div></div>
+          <div class="stat-card warn"><div class="num" id="stat-unmatched">–</div><div class="label">미확보 (수동 확인 필요)</div></div>
+          <div class="stat-card"><div class="num" id="stat-managers">–</div><div class="label">소영 / 대일 담당 건수</div></div>
+        </div>
+
+        <div id="sheet-banner" class="banner warn" hidden>
+          <span>⚠</span>
+          <span id="sheet-banner-text"></span>
+        </div>
+
+        <div class="card">
+          <div class="toolbar">
+            <div class="chipset" id="mgr-filter-chips">
+              <button class="chip" data-filter="all" aria-pressed="true">전체</button>
+              <button class="chip" data-filter="소영" aria-pressed="false">소영</button>
+              <button class="chip" data-filter="대일" aria-pressed="false">대일</button>
+            </div>
+            <input type="search" class="search-input" id="mgr-search" placeholder="업체명 / DB명 검색">
+          </div>
+          <div class="table-wrap">
+            <table class="vendors">
+              <thead>
+                <tr>
+                  <th>업체</th>
+                  <th>DB명</th>
+                  <th>정산 방식</th>
+                  <th>상태</th>
+                  <th>담당자</th>
+                </tr>
+              </thead>
+              <tbody id="vendor-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== PANEL: 정산 실행 ===================== -->
+      <section id="panel-exec" class="panel" hidden>
+        <div class="page-head">
+          <h1>정산 실행</h1>
+          <p>담당자와 기간·조회조건을 정하면, 대상 업체 전체에 대해 업체별로 파일을 하나씩 순서대로 다운로드합니다.</p>
+        </div>
+
+        <div class="exec-grid">
+
+          <!-- left: 조건 설정 -->
+          <div>
+            <fieldset class="group">
+              <legend>대상 업체</legend>
+              <div class="field-row" style="margin-bottom:12px;">
+                <div class="field">
+                  <label class="field-label" for="exec-mgr-filter">담당자</label>
+                  <select class="ctl" id="exec-mgr-filter">
+                    <option value="all">전체</option>
+                    <option value="소영">소영</option>
+                    <option value="대일">대일</option>
+                  </select>
+                </div>
+              </div>
+              <div class="checklist-toolbar">
+                <span class="count" id="checklist-count">–</span>
+                <span>
+                  <button class="link-btn" id="check-all-btn" type="button">전체 선택</button>
+                  · <button class="link-btn" id="check-none-btn" type="button">전체 해제</button>
+                </span>
+              </div>
+              <div class="vendor-checklist" id="vendor-checklist"></div>
+              <p class="hint">PARTNER_ID가 아직 확보되지 않은 업체는 자동으로 제외됩니다.</p>
+            </fieldset>
+
+            <fieldset class="group">
+              <legend>기간 설정</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field-label" for="period-year">연도</label>
+                  <select class="ctl" id="period-year"></select>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="period-month">월</label>
+                  <select class="ctl" id="period-month"></select>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="period-unit">조회 단위</label>
+                  <div class="radio-group" id="period-unit" style="padding-top:8px;">
+                    <label class="radio-item"><input type="radio" name="unit" value="order"> 주문단위</label>
+                    <label class="radio-item"><input type="radio" name="unit" value="batch" checked> 정산묶음단위</label>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="group">
+              <legend>조회조건</legend>
+              <div class="field" style="margin-bottom:12px;">
+                <span class="field-label">정산유형</span>
+                <div class="checkbox-grid" id="type-checks">
+                  <label class="check-item"><input type="checkbox" value="sale" checked> 상품 판매</label>
+                  <label class="check-item"><input type="checkbox" value="refund" checked> 상품 환불</label>
+                  <label class="check-item"><input type="checkbox" value="delivery" checked> 배송비</label>
+                  <label class="check-item"><input type="checkbox" value="deliveryRefund" checked> 배송비 환불</label>
+                  <label class="check-item"><input type="checkbox" value="adjustment"> 정산 보정</label>
+                </div>
+              </div>
+              <div class="field-row" style="margin-bottom:12px;">
+                <div class="field">
+                  <label class="field-label" for="status-select">정산상태</label>
+                  <select class="ctl" id="status-select">
+                    <option value="all">전체</option>
+                    <option value="pending">정산 대기</option>
+                    <option value="paid">지급 완료</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label class="check-item"><input type="checkbox" id="adj-window-toggle" checked> 보정건 추가조회</label>
+                <div class="field-row" style="margin-top:6px;padding-left:24px;">
+                  <span class="hint" style="margin-top:0;">조회기간 종료일 이후</span>
+                  <input class="ctl" type="number" id="adj-window-days" value="15" min="0" max="60">
+                  <span class="hint" style="margin-top:0;">일까지의 보정건 포함</span>
+                </div>
+              </div>
+              <p class="hint" id="type-warn" style="color:var(--stamp);display:none;">정산유형을 하나 이상 선택해야 합니다.</p>
+            </fieldset>
+          </div>
+
+          <!-- right: 요약 + 실행 -->
+          <div>
+            <div class="banner info">
+              <span>ℹ</span>
+              <span>이 콘솔은 아직 Databricks에 직접 연결되어 있지 않습니다. 아래 버튼은 실제 정산 데이터가 아니라 조건을 정리한 <strong>다운로드 요청서</strong>를 업체별 파일로 생성하며, 실제 정산 데이터 추출은 이 요청서를 정산AX 담당자(Claude)에게 전달해 진행합니다.</span>
+            </div>
+
+            <div class="card card-pad summary-card">
+              <div class="summary-line"><span class="k">대상 담당자</span><span class="v" id="sum-manager">–</span></div>
+              <div class="summary-line"><span class="k">선택된 업체</span><span class="v" id="sum-vendor-count">–</span></div>
+              <div class="summary-line"><span class="k">정산기간</span><span class="v" id="sum-period">–</span></div>
+              <div class="summary-line"><span class="k">정산유형</span><span class="v" id="sum-types">–</span></div>
+              <div class="summary-line"><span class="k">정산상태</span><span class="v" id="sum-status">–</span></div>
+              <div class="summary-line"><span class="k">파일명 예시</span><span class="v" id="sum-filename">–</span></div>
+            </div>
+
+            <fieldset class="group" style="margin-bottom:14px;">
+              <legend>파일 형식</legend>
+              <div class="radio-group" id="file-format-group">
+                <label class="radio-item"><input type="radio" name="fileFormat" value="csv" checked> CSV</label>
+                <label class="radio-item"><input type="radio" name="fileFormat" value="xlsx"> XLSX (엑셀)</label>
+              </div>
+              <p class="hint">XLSX는 최초 다운로드 시 변환 라이브러리를 한 번 불러옵니다(인터넷 연결 필요).</p>
+            </fieldset>
+
+            <div class="btn-col">
+              <div>
+                <button class="btn primary" id="btn-batch-vendor" style="width:100%;">업체 교부용 일괄 다운로드</button>
+                <div class="btn-note">판매가 컬럼 제외 · 업체별 파일 1개씩 · 업체 전달용</div>
+              </div>
+              <div>
+                <button class="btn primary" id="btn-batch-archive" style="width:100%;">내부 아카이빙용 일괄 다운로드</button>
+                <div class="btn-note">전체 컬럼 포함 · 업체별 파일 1개씩 · 내부 보관용</div>
+              </div>
+              <button class="btn ghost" id="btn-preview-toggle" type="button" style="width:100%;">예시 파일 미리보기</button>
+            </div>
+
+            <div class="card card-pad receipt" id="receipt-box" hidden style="margin-top:14px;">
+              <h3>예시 미리보기 (선택된 업체 중 첫 번째 기준 · 내용은 CSV/XLSX 공통)</h3>
+              <pre id="receipt-text"></pre>
+            </div>
+
+            <div class="run-log" id="run-log"></div>
+            <div class="run-summary" id="run-summary"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== PANEL: Google 시트 동기화 ===================== -->
+      <section id="panel-sheets" class="panel" hidden>
+        <div class="page-head">
+          <h1>Google 시트 동기화</h1>
+          <p>정산 실행 결과를 정산현황 시트·채산 시트에 자동으로 반영하는 화면입니다.</p>
+        </div>
+        <div class="card placeholder-card">
+          <div class="placeholder-icon">
+            <svg class="icon" style="width:26px;height:26px;" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5"/></svg>
+          </div>
+          <h2>아직 연결되지 않았습니다</h2>
+          <p>Google Sheets API 연동은 현재 후순위로 미뤄진 상태입니다. 연동이 확정되면 이 화면에서 시트·탭을 선택하고, 정산 실행 결과를 자동으로 반영할 수 있게 됩니다.</p>
+          <p>지금은 "정산 실행" 화면에서 받은 다운로드 요청서를 정산AX 담당자에게 전달해 진행해 주세요.</p>
+          <span class="placeholder-status">● 준비 중</span>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script id="vendor-data" type="application/json">[{"no": "1", "name": "(주)밀리언커넥티드 (이모션아트)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "EMOTIONART.PRINT", "partnerId": "14cd46aa-2e3c-416e-a070-1c296a56c351", "matchStatus": "매칭", "note": ""}, {"no": "2", "name": "골든팩키지", "manager": "대일", "method": "업체자료로 수기정산", "dbCode": "GOLDENPACK.PRINT", "partnerId": "9365b4cd-77bf-4742-aeda-d59d98cc4ef6", "matchStatus": "매칭", "note": ""}, {"no": "3", "name": "그린메디컬", "manager": "소영", "method": "아일랜드 정산", "dbCode": "GREENMED.PRINT", "partnerId": "11e38545-a60f-4967-ad59-2943c3e1fa6f", "matchStatus": "매칭", "note": ""}, {"no": "4", "name": "뉴마커스", "manager": "소영", "method": "아일랜드 정산", "dbCode": "NMARKERS.PRINT", "partnerId": "3a5cf21a-eafe-45b8-b73f-4b1adc9263f8", "matchStatus": "매칭", "note": ""}, {"no": "5", "name": "다원아트", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DAWONART.PRINT", "partnerId": "ac064933-59b9-4f03-a7f1-d67ba5bec6dd", "matchStatus": "매칭", "note": ""}, {"no": "6", "name": "다이버", "manager": "대일", "method": "아일랜드 정산", "dbCode": "DIIVER.PRINT", "partnerId": "5161350f-111d-4959-8369-06b13236e321", "matchStatus": "매칭", "note": "DB 코드 표기 다름(시트: DIIVER.PRINT / DB 실제: DIIVER) — 사용자 확인 완료, 동일 업체 맞음"}, {"no": "7", "name": "대길", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DAEGIL.PRINT", "partnerId": "49b51873-a553-4d26-9015-76fa5322cc59", "matchStatus": "매칭", "note": ""}, {"no": "8", "name": "대원시스템", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DAEWONSYSTEM.PRINT", "partnerId": "46675ece-78d5-406b-8d37-acb451aac07a", "matchStatus": "매칭", "note": ""}, {"no": "9", "name": "대하상사", "manager": "대일", "method": "아일랜드 정산", "dbCode": "DHSS.PRINT", "partnerId": "9c7368e4-0615-44d2-86d9-fbac603eddf2", "matchStatus": "매칭", "note": ""}, {"no": "10", "name": "대호엔터프라이즈", "manager": "대일", "method": "아일랜드 정산", "dbCode": "DAEHO.PRINT", "partnerId": "f87ce566-7fe9-4525-bc98-8f5f133d0b10", "matchStatus": "매칭", "note": ""}, {"no": "13", "name": "디지털준(1차)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DIGITALJUNE.PRINT", "partnerId": "ba054a75-4071-41ba-ad3f-8cc814be8254", "matchStatus": "매칭", "note": ""}, {"no": "14", "name": "디지털준(2차)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DIGITALJUNE.PRINT", "partnerId": "ba054a75-4071-41ba-ad3f-8cc814be8254", "matchStatus": "매칭", "note": ""}, {"no": "15", "name": "디프린팅(굿프린팅)", "manager": "대일", "method": "업체자료로 수기정산", "dbCode": "D.PRINT", "partnerId": "", "matchStatus": "코드확인/PARTNER_ID 미확보", "note": "DB명 D.PRINT는 사용자 확인 완료(맞음). 다만 Databricks partner 테이블에는 해당 PROVIDER_SUBJECT_ID로 등록된 레코드가 아직 없음 — PARTNER_ID 미확보, 파트너 등록 여부 재확인 필요"}, {"no": "18", "name": "라온케이스", "manager": "대일", "method": "아일랜드 정산", "dbCode": "RAONCASE.PRINT", "partnerId": "4be21bfb-b206-45ac-8d90-8cdb1860659e", "matchStatus": "매칭", "note": ""}, {"no": "19", "name": "레드프린팅((주)베러웨이시스템즈)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "REDPRINTING.PRINT", "partnerId": "6e40c6ec-d268-4f57-8125-d6b8400b04c9", "matchStatus": "매칭", "note": ""}, {"no": "20", "name": "리젠크리스탈", "manager": "대일", "method": "아일랜드 정산", "dbCode": "REZENCRYSTAL.PRINT", "partnerId": "9c863a90-b2b8-436e-b360-a7d1380735e6", "matchStatus": "매칭", "note": ""}, {"no": "22", "name": "맥스코리아", "manager": "대일", "method": "아일랜드 정산", "dbCode": "MAXK.PRINT", "partnerId": "4e0a1b6f-55b6-4962-9e27-c3a917df7f31", "matchStatus": "매칭", "note": ""}, {"no": "23", "name": "머그야", "manager": "소영", "method": "아일랜드 정산", "dbCode": "MUGYA.PRINT", "partnerId": "cfe09f3d-12b1-4874-84de-0f68afeea905", "matchStatus": "매칭", "note": ""}, {"no": "24", "name": "메이데이31(어썸프로젝트컴퍼니)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "MAYDAY31.PRINT", "partnerId": "971a07df-359a-4a41-a4c1-bd49a0ba5e1a", "matchStatus": "매칭", "note": ""}, {"no": "25", "name": "모락", "manager": "대일", "method": "아일랜드 정산", "dbCode": "MORACC.PRINT", "partnerId": "bf58b837-7f2f-4477-9ba6-c76d880189b3", "matchStatus": "매칭", "note": ""}, {"no": "26", "name": "무새", "manager": "소영", "method": "아일랜드 정산", "dbCode": "MUSAE.PRINT", "partnerId": "cc721d33-b3e2-465f-a8d1-23e0460abbaf", "matchStatus": "매칭", "note": ""}, {"no": "27", "name": "미스터팩", "manager": "소영", "method": "업체자료로 수기정산", "dbCode": "MRPACK.PRINT", "partnerId": "61320e89-d799-4120-823e-322aac21e3e6", "matchStatus": "매칭", "note": ""}, {"no": "29", "name": "범아", "manager": "대일", "method": "아일랜드 정산", "dbCode": "BUMA.PRINT", "partnerId": "c0c273cc-a2ac-4688-b20e-7eeecdfe2be3", "matchStatus": "매칭", "note": ""}, {"no": "30", "name": "브로스앤컴퍼니", "manager": "소영", "method": "아일랜드 정산", "dbCode": "BROSNCOMPANY.PRINT", "partnerId": "fcba79a0-95c3-459a-9ae6-77956bf0a4ea", "matchStatus": "매칭", "note": ""}, {"no": "31", "name": "상도(발송기준 정산)", "manager": "대일", "method": "업체자료로 수기정산", "dbCode": "SANGDO.PRINT", "partnerId": "7671ecd5-5237-4cfd-8f19-cd867bb4cf38", "matchStatus": "매칭", "note": ""}, {"no": "32", "name": "소프런", "manager": "소영", "method": "아일랜드 정산", "dbCode": "SOFRON.PRINT", "partnerId": "9f40a0be-4898-4a5e-801a-1f690914ee22", "matchStatus": "매칭", "note": ""}, {"no": "33", "name": "스마트애드", "manager": "소영", "method": "아일랜드 정산", "dbCode": "SMARTAD.PRINT", "partnerId": "82c945b6-f0c0-424e-b17f-d1e56b85558b", "matchStatus": "매칭", "note": ""}, {"no": "34", "name": "시크론", "manager": "소영", "method": "아일랜드 정산", "dbCode": "SICRON.PRINT", "partnerId": "73632423-9d03-430f-bff4-59016d958a50", "matchStatus": "매칭", "note": ""}, {"no": "36", "name": "아딤", "manager": "소영", "method": "아일랜드 정산", "dbCode": "ADIM.PRINT", "partnerId": "a6965fe3-0710-4c55-8b04-ddbe272fe4c6", "matchStatus": "매칭", "note": ""}, {"no": "37", "name": "아이윌솔루션", "manager": "소영", "method": "아일랜드 정산", "dbCode": "IWILLSOL.PRINT", "partnerId": "5914aaa2-f752-4f0c-be56-2685bd0faf71", "matchStatus": "매칭", "note": ""}, {"no": "38", "name": "아트시스", "manager": "소영", "method": "아일랜드 정산", "dbCode": "ARTSYS.PRINT", "partnerId": "3c04e2ef-e08d-49c9-8ccf-791c0240dc48", "matchStatus": "매칭", "note": ""}, {"no": "39", "name": "아프로", "manager": "소영", "method": "업체자료로 수기정산", "dbCode": "APRO.PRINT", "partnerId": "225b298e-171e-4361-97ef-675799d2a883", "matchStatus": "매칭", "note": ""}, {"no": "40", "name": "알로코리아", "manager": "대일", "method": "아일랜드 정산", "dbCode": "ALLO.PRINT", "partnerId": "af82259a-cb9f-4b1f-92a0-eb8835b07fc6", "matchStatus": "매칭", "note": ""}, {"no": "41", "name": "애드립(탑미디어)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "ADLIP.PRINT", "partnerId": "ace14c30-2378-4cd1-8ea8-d2ce2c74efe0", "matchStatus": "매칭", "note": ""}, {"no": "43", "name": "에어하나(열하나)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "AIRHANA.PRINT", "partnerId": "3372e727-701c-43a7-a837-47e44e5048a3", "matchStatus": "매칭", "note": ""}, {"no": "44", "name": "엘마스타", "manager": "대일", "method": "업체자료로 수기정산", "dbCode": "LMASTER.PRINT", "partnerId": "35d19ad1-af70-40e8-b851-5bc935a33e0d", "matchStatus": "매칭", "note": ""}, {"no": "45", "name": "엣트리(어프리)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "ATTREE.PRINT", "partnerId": "a35b27e2-be5f-4a2a-b147-c429a662901a", "matchStatus": "매칭", "note": ""}, {"no": "47", "name": "다보패키지(오앤포장)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "ONPACK.PRINT", "partnerId": "41152869-b16f-41e6-a295-9baffb2a068b", "matchStatus": "매칭", "note": ""}, {"no": "48", "name": "와우엠앤씨", "manager": "대일", "method": "", "dbCode": "WOWMNC.PRINT", "partnerId": "478d4da5-d22e-48a3-8c26-3347e7855bde", "matchStatus": "매칭", "note": ""}, {"no": "52", "name": "윤씨상회", "manager": "대일", "method": "아일랜드 정산", "dbCode": "FILE1004.PRINT", "partnerId": "76bc02de-e0b5-4868-bc59-01d8a452d404", "matchStatus": "매칭", "note": ""}, {"no": "53", "name": "재승그룹", "manager": "대일", "method": "아일랜드 정산", "dbCode": "JAESEUNG.PRINT", "partnerId": "53e20a87-3bd3-4182-8c24-5f57954fc7e0", "matchStatus": "매칭", "note": ""}, {"no": "55", "name": "주경", "manager": "대일", "method": "아일랜드 정산", "dbCode": "JUKYUNG.PRINT", "partnerId": "ee971fee-38ca-4297-9c2b-5fd56384c65f", "matchStatus": "매칭", "note": ""}, {"no": "57", "name": "지오아이앤티", "manager": "소영", "method": "아일랜드 정산", "dbCode": "ZIOINT.PRINT", "partnerId": "1f6751a9-cbab-485d-868c-29c51d5a3eb2", "matchStatus": "매칭", "note": ""}, {"no": "58", "name": "진성온(1차)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "JINSUNGON.PRINT", "partnerId": "dc971258-5d18-4dd1-80f4-81446d5999e8", "matchStatus": "매칭", "note": ""}, {"no": "59", "name": "진성온(2차)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "JINSUNGON.PRINT", "partnerId": "dc971258-5d18-4dd1-80f4-81446d5999e8", "matchStatus": "매칭", "note": ""}, {"no": "61", "name": "카피플러스", "manager": "소영", "method": "아일랜드 정산", "dbCode": "COPYPLUS.PRINT", "partnerId": "825924b2-2d3a-4c8a-b128-dbcffc4a5bcb", "matchStatus": "매칭", "note": ""}, {"no": "62", "name": "코니버스(키친앤키친)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "KITCHENNKITCHEN.PRINT", "partnerId": "e62a29b5-8a8b-4f3a-8188-8919946963b5", "matchStatus": "매칭", "note": ""}, {"no": "63", "name": "크로서블스", "manager": "소영", "method": "아일랜드 정산", "dbCode": "CROSSABLES.PRINT", "partnerId": "5afbc0c8-fa99-4b4f-a170-77a2aceb92ac", "matchStatus": "매칭", "note": ""}, {"no": "64", "name": "클린존(티슈도리)", "manager": "소영", "method": "아일랜드 정산", "dbCode": "CLEANZONE.PRINT", "partnerId": "9570f684-576c-40d3-a62d-00abd246d703", "matchStatus": "매칭", "note": ""}, {"no": "65", "name": "기웅생활건강(투지)", "manager": "소영", "method": "아일랜드정산", "dbCode": "TWOZ.PRINT", "partnerId": "f159322a-a9f8-4574-a095-acf6ebacb5d6", "matchStatus": "매칭", "note": ""}, {"no": "66", "name": "트리탑(트리온)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "TREETOP.PRINT", "partnerId": "e2d925a5-36b7-48f3-b05a-dc808a177105", "matchStatus": "매칭", "note": ""}, {"no": "67", "name": "티엠테크(제이엠미디어)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "JMM.PRINT", "partnerId": "ec02b7c5-cabe-4a5e-914d-b400e1d1cb0b", "matchStatus": "매칭", "note": ""}, {"no": "68", "name": "티유아이", "manager": "소영", "method": "아일랜드 정산", "dbCode": "TUI.PRINT", "partnerId": "087a820e-cd1c-4438-9f2c-7e9c7e9d2314", "matchStatus": "매칭", "note": ""}, {"no": "69", "name": "프리사커(티싸요)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "TSSAYO.PRINT", "partnerId": "90b5f839-1b2f-46ff-9026-d0ac2f93ad06", "matchStatus": "매칭", "note": ""}, {"no": "70", "name": "프린트뱅크", "manager": "대일", "method": "업체자료로 수기정산", "dbCode": "HNR9009.PRINT", "partnerId": "9d3e086b-673c-4c6b-91bf-0628804bdc05", "matchStatus": "매칭", "note": ""}, {"no": "72", "name": "필커뮤니티(필프레임)", "manager": "대일", "method": "아일랜드 정산", "dbCode": "FEELFRAME.PRINT", "partnerId": "52c2414d-b296-4446-96ad-836130ec345d", "matchStatus": "매칭", "note": ""}, {"no": "73", "name": "하우사인", "manager": "소영", "method": "아일랜드 정산", "dbCode": "HOWSIGN.PRINT", "partnerId": "4d35fe55-3ad4-4166-8486-0d1faf65ec1a", "matchStatus": "매칭", "note": ""}, {"no": "74", "name": "핸즈코퍼레이션", "manager": "소영", "method": "아일랜드 정산", "dbCode": "HANDSCORP.PRINT", "partnerId": "0c7e5fff-9c08-4432-a55c-1acc790d5b6f", "matchStatus": "매칭", "note": ""}, {"no": "75", "name": "후니프린팅", "manager": "소영", "method": "아일랜드 정산", "dbCode": "HUNI.PRINT", "partnerId": "8acbf2e2-e03f-4361-9b04-7fa0ba8aa880", "matchStatus": "매칭", "note": ""}, {"no": "78", "name": "DLSP", "manager": "소영", "method": "아일랜드 정산", "dbCode": "DLSP.PRINT", "partnerId": "e2a1ec4b-3b18-401b-8168-d59d73513426", "matchStatus": "매칭", "note": ""}, {"no": "79", "name": "베르덴글로벌", "manager": "대일", "method": "아일랜드 정산", "dbCode": "VERDEN.PRINT", "partnerId": "06113f25-f4b5-4ca3-bb0d-a15cf3fca3af", "matchStatus": "매칭", "note": ""}]</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var VENDORS = JSON.parse(document.getElementById('vendor-data').textContent);
+  var VENDOR_BY_NO = {};
+  VENDORS.forEach(function(v){ VENDOR_BY_NO[v.no] = v; });
+
+  var includedNos = {};       // no -> bool, exec-tab checklist inclusion state
+
+  // 담당자 값은 VENDOR_BY_NO의 각 항목에 직접 반영된다(구글시트 fetch가 갱신) — 이 함수는 그걸 그대로 읽기만 한다.
+  function currentManager(v){ return v.manager; }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* =================================================================
+     SIDEBAR NAV + COLLAPSE
+  ================================================================= */
+  var sidebar = document.getElementById('sidebar');
+  var sidebarToggle = document.getElementById('sidebar-toggle');
+  var sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+  var panels = {
+    manager: document.getElementById('panel-manager'),
+    exec: document.getElementById('panel-exec'),
+    sheets: document.getElementById('panel-sheets')
+  };
+  var navItems = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
+
+  function selectPanel(key){
+    Object.keys(panels).forEach(function(k){ panels[k].hidden = (k !== key); });
+    navItems.forEach(function(btn){
+      btn.setAttribute('aria-current', btn.getAttribute('data-panel') === key ? 'true' : 'false');
+    });
+    if (key === 'exec') refreshVendorChecklist();
+    try { localStorage.setItem('settlementax_active_panel', key); } catch(e){}
+  }
+  navItems.forEach(function(btn){
+    btn.addEventListener('click', function(){ selectPanel(btn.getAttribute('data-panel')); });
+  });
+
+  function setSidebarCollapsed(collapsed){
+    sidebar.classList.toggle('collapsed', collapsed);
+    sidebarToggleIcon.innerHTML = collapsed
+      ? '<path d="M9 6l6 6-6 6"/>'
+      : '<path d="M15 6l-6 6 6 6"/>';
+    try { localStorage.setItem('settlementax_sidebar_collapsed', collapsed ? '1' : '0'); } catch(e){}
+  }
+  sidebarToggle.addEventListener('click', function(){
+    setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+  });
+
+  var initialActivePanel = 'manager';
+  (function initLayoutFromStorage(){
+    var collapsed = false;
+    try {
+      collapsed = localStorage.getItem('settlementax_sidebar_collapsed') === '1';
+      var saved = localStorage.getItem('settlementax_active_panel');
+      if (saved && panels[saved]) initialActivePanel = saved;
+    } catch(e){}
+    setSidebarCollapsed(collapsed);
+    // selectPanel(initialActivePanel) is called later, in the INIT block at the
+    // bottom of this script — calling it here (before exec-tab variables like
+    // execMgrFilter are assigned) throws when the saved panel is 'exec'.
+  })();
+
+  /* =================================================================
+     PANEL: 정산 담당자 관리
+  ================================================================= */
+  function renderStats(){
+    var total = VENDORS.length;
+    var unmatched = VENDORS.filter(function(v){ return !v.partnerId; }).length;
+    var matched = total - unmatched;
+    var soyoung = VENDORS.filter(function(v){ return currentManager(v) === '소영'; }).length;
+    var daeil = VENDORS.filter(function(v){ return currentManager(v) === '대일'; }).length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-matched').textContent = matched;
+    document.getElementById('stat-unmatched').textContent = unmatched;
+    document.getElementById('stat-managers').textContent = soyoung + ' / ' + daeil;
+  }
+
+  var mgrFilter = 'all';
+  var mgrSearch = '';
+
+  function renderVendorTable(){
+    var tbody = document.getElementById('vendor-tbody');
+    var list = VENDORS.filter(function(v){
+      if (mgrFilter !== 'all' && currentManager(v) !== mgrFilter) return false;
+      if (mgrSearch){
+        var q = mgrSearch.toLowerCase();
+        if (v.name.toLowerCase().indexOf(q) === -1 && v.dbCode.toLowerCase().indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    list.sort(function(a,b){ return a.name.localeCompare(b.name, 'ko'); });
+
+    var rows = list.map(function(v){
+      var ok = !!v.partnerId;
+      var badge = ok ? '<span class="badge ok">확인됨</span>' : '<span class="badge warn">미확보</span>';
+      var noteFlag = v.note ? '<span class="note-flag" title="' + escapeHtml(v.note) + '">i</span>' : '';
+      var partnerLine = ok ? '<div class="partner-id">' + escapeHtml(v.partnerId) + '</div>' : '<div class="partner-id">–</div>';
+      var mgr = currentManager(v);
+      return (
+        '<tr data-no="' + v.no + '">' +
+          '<td><div class="vendor-name"><span class="no">#' + v.no + '</span>' + escapeHtml(v.name) + noteFlag + '</div></td>' +
+          '<td><div class="db-code">' + escapeHtml(v.dbCode) + '</div>' + partnerLine + '</td>' +
+          '<td>' + escapeHtml(v.method || '–') + '</td>' +
+          '<td>' + badge + '</td>' +
+          '<td><span class="mgr-badge">' + escapeHtml(mgr) + '</span></td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    tbody.innerHTML = rows || '<tr><td colspan="5" style="color:var(--text-faint);padding:24px;text-align:center;">일치하는 업체가 없습니다.</td></tr>';
+  }
+
+  document.getElementById('mgr-filter-chips').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip');
+    if (!btn) return;
+    mgrFilter = btn.getAttribute('data-filter');
+    Array.prototype.forEach.call(document.querySelectorAll('#mgr-filter-chips .chip'), function(c){
+      c.setAttribute('aria-pressed', c === btn ? 'true' : 'false');
+    });
+    renderVendorTable();
+  });
+  document.getElementById('mgr-search').addEventListener('input', function(e){
+    mgrSearch = e.target.value.trim();
+    renderVendorTable();
+  });
+
+  /* =================================================================
+     담당자 배정 — 구글시트(웹에 게시된 CSV) 읽기 전용 동기화
+  ================================================================= */
+  // "정산 AX - 담당자 배정" 시트를 파일 → 공유 → 웹에 게시로 내보낸 CSV 링크.
+  // 담당자 변경은 이 콘솔이 아니라 저 시트에서 직접 한다 — 여기는 읽기만 한다.
+  var MANAGER_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTu2WevRPjPUGdzH4woPBFa-pgIbSFk4yKHi74OvYU87opA8H5aepK4qUt12IVNhO0Xdyn25JANHWSb/pub?gid=1868901458&single=true&output=csv';
+
+  function parseCsv(text){
+    // 콤마/따옴표/개행을 포함한 필드까지 다루는 최소 CSV 파서 (RFC4180 기준).
+    var rows = [];
+    var row = [];
+    var field = '';
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++){
+      var c = text[i];
+      if (inQuotes){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field += '"'; i++; }
+          else { inQuotes = false; }
+        } else { field += c; }
+      } else {
+        if (c === '"'){ inQuotes = true; }
+        else if (c === ','){ row.push(field); field = ''; }
+        else if (c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\r'){ /* skip, \n 처리 시 행 종료 */ }
+        else { field += c; }
+      }
+    }
+    if (field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return r.length > 1 || (r.length === 1 && r[0] !== ''); });
+  }
+
+  function setSyncPill(state){
+    var pill = document.getElementById('sync-pill');
+    var text = document.getElementById('sync-pill-text');
+    pill.setAttribute('data-state', state === 'live' ? 'live' : (state === 'loading' ? 'connecting' : 'local'));
+    if (state === 'live') text.textContent = '담당자 시트 연동됨';
+    else if (state === 'loading') text.textContent = '담당자 시트 확인 중…';
+    else text.textContent = '담당자 시트 연동 안 됨 (기본값 표시 중)';
+  }
+
+  function setSheetSyncUi(state, detail){
+    var statusEl = document.getElementById('sheet-sync-status');
+    var banner = document.getElementById('sheet-banner');
+    var bannerText = document.getElementById('sheet-banner-text');
+    var refreshBtn = document.getElementById('sheet-refresh-btn');
+    setSyncPill(state === 'ok' ? 'live' : (state === 'loading' ? 'loading' : 'local'));
+    refreshBtn.classList.toggle('spinning', state === 'loading');
+    if (state === 'loading'){
+      statusEl.textContent = '불러오는 중…';
+      banner.hidden = true;
+    } else if (state === 'ok'){
+      var now = new Date();
+      var hh = now.getHours(), mm = now.getMinutes();
+      var ampm = hh < 12 ? '오전' : '오후';
+      var hh12 = hh % 12 || 12;
+      statusEl.textContent = '마지막 갱신 ' + ampm + ' ' + hh12 + ':' + (mm < 10 ? '0' + mm : mm);
+      banner.hidden = true;
+    } else {
+      statusEl.textContent = '갱신 실패';
+      banner.hidden = false;
+      bannerText.textContent = detail || '담당자 시트를 불러오지 못했습니다. 마지막으로 확인된 담당자 값을 표시 중입니다.';
+    }
+  }
+
+  function applyManagerRowsFromSheet(rows){
+    if (!rows.length) return;
+    var header = rows[0].map(function(h){ return h.trim(); });
+    var idxNo = header.indexOf('순번');
+    var idxMgr = header.indexOf('담당자');
+    if (idxNo === -1 || idxMgr === -1) throw new Error('시트 헤더 형식이 예상과 다름 (순번/담당자 컬럼 없음)');
+    for (var i = 1; i < rows.length; i++){
+      var r = rows[i];
+      var no = (r[idxNo] || '').trim();
+      var mgr = (r[idxMgr] || '').trim();
+      if (!no || !mgr) continue;
+      var v = VENDOR_BY_NO[no];
+      if (v) v.manager = mgr;
+    }
+  }
+
+  function refreshManagerSheet(){
+    setSheetSyncUi('loading');
+    return fetch(MANAGER_SHEET_CSV_URL, { cache: 'no-store' })
+      .then(function(res){
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function(text){
+        var rows = parseCsv(text);
+        applyManagerRowsFromSheet(rows);
+        setSheetSyncUi('ok');
+        renderVendorTable();
+        renderStats();
+        refreshVendorChecklist();
+      })
+      .catch(function(err){
+        setSheetSyncUi('error', '담당자 시트를 불러오지 못했습니다 (' + (err && err.message ? err.message : '네트워크 오류') + '). 마지막으로 확인된 담당자 값을 표시 중입니다.');
+      });
+  }
+
+  function initManagerSheetSync(){
+    document.getElementById('sheet-refresh-btn').addEventListener('click', function(){ refreshManagerSheet(); });
+    refreshManagerSheet();
+    // 페이지를 오래 열어두는 경우를 대비해 5분마다 자동으로 다시 확인.
+    setInterval(refreshManagerSheet, 5 * 60 * 1000);
+  }
+
+  /* =================================================================
+     PANEL: 정산 실행 — 대상 업체 체크리스트
+  ================================================================= */
+  var execMgrFilter = document.getElementById('exec-mgr-filter');
+
+  function candidateVendors(){
+    var filter = execMgrFilter.value;
+    return VENDORS.filter(function(v){ return filter === 'all' || currentManager(v) === filter; })
+      .sort(function(a,b){ return a.name.localeCompare(b.name, 'ko'); });
+  }
+
+  function refreshVendorChecklist(){
+    var list = candidateVendors();
+    var box = document.getElementById('vendor-checklist');
+    box.innerHTML = list.map(function(v){
+      var ok = !!v.partnerId;
+      if (!(v.no in includedNos)) includedNos[v.no] = ok; // default: included unless unmatched
+      if (!ok) includedNos[v.no] = false;
+      var checked = includedNos[v.no] ? ' checked' : '';
+      var disabled = ok ? '' : ' disabled';
+      var badge = ok ? '' : '<span class="vbadge badge warn">미확보</span>';
+      return (
+        '<label class="vendor-check-row' + (ok ? '' : ' disabled') + '">' +
+          '<input type="checkbox" data-no="' + v.no + '"' + checked + disabled + '>' +
+          '<span class="vname">' + escapeHtml(v.name) + '</span>' +
+          '<span class="vcode">' + escapeHtml(v.dbCode) + '</span>' +
+          badge +
+        '</label>'
+      );
+    }).join('') || '<div style="padding:16px;color:var(--text-faint);font-size:12.5px;">해당 담당자의 업체가 없습니다.</div>';
+    updateChecklistCount();
+    updateSummary();
+  }
+
+  function updateChecklistCount(){
+    var list = candidateVendors();
+    var included = list.filter(function(v){ return includedNos[v.no]; }).length;
+    document.getElementById('checklist-count').textContent = list.length + '곳 중 ' + included + '곳 선택됨';
+  }
+
+  document.getElementById('vendor-checklist').addEventListener('change', function(e){
+    var cb = e.target.closest('input[type="checkbox"]');
+    if (!cb) return;
+    includedNos[cb.getAttribute('data-no')] = cb.checked;
+    updateChecklistCount();
+    updateSummary();
+  });
+  document.getElementById('check-all-btn').addEventListener('click', function(){
+    candidateVendors().forEach(function(v){ if (v.partnerId) includedNos[v.no] = true; });
+    refreshVendorChecklist();
+  });
+  document.getElementById('check-none-btn').addEventListener('click', function(){
+    candidateVendors().forEach(function(v){ includedNos[v.no] = false; });
+    refreshVendorChecklist();
+  });
+  execMgrFilter.addEventListener('change', refreshVendorChecklist);
+
+  function selectedVendors(){
+    return candidateVendors().filter(function(v){ return includedNos[v.no] && v.partnerId; });
+  }
+
+  /* =================================================================
+     PANEL: 정산 실행 — 기간 / 조건
+  ================================================================= */
+  var yearSelect = document.getElementById('period-year');
+  var monthSelect = document.getElementById('period-month');
+
+  (function initPeriod(){
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = now.getMonth() + 1;
+    var defaultMonth = m - 1, defaultYear = y;
+    if (defaultMonth < 1){ defaultMonth = 12; defaultYear = y - 1; }
+    var years = [y - 1, y, y + 1];
+    yearSelect.innerHTML = years.map(function(yy){
+      return '<option value="' + yy + '"' + (yy === defaultYear ? ' selected' : '') + '>' + yy + '년</option>';
+    }).join('');
+    var months = [];
+    for (var i = 1; i <= 12; i++) months.push(i);
+    monthSelect.innerHTML = months.map(function(mm){
+      return '<option value="' + mm + '"' + (mm === defaultMonth ? ' selected' : '') + '>' + mm + '월</option>';
+    }).join('');
+  })();
+
+  var typeLabels = { sale:'상품 판매', refund:'상품 환불', delivery:'배송비', deliveryRefund:'배송비 환불', adjustment:'정산 보정' };
+
+  function getSelectedTypes(){
+    return Array.prototype.slice.call(document.querySelectorAll('#type-checks input:checked')).map(function(cb){ return cb.value; });
+  }
+
+  var adjToggle = document.getElementById('adj-window-toggle');
+  var adjDays = document.getElementById('adj-window-days');
+  function syncAdjDaysState(){ adjDays.disabled = !adjToggle.checked; }
+  syncAdjDaysState();
+
+  function buildConditions(){
+    var types = getSelectedTypes();
+    var unit = document.querySelector('input[name="unit"]:checked').value === 'order' ? '주문단위' : '정산묶음단위';
+    var statusVal = document.getElementById('status-select').value;
+    var statusLabel = statusVal === 'all' ? '전체' : (statusVal === 'pending' ? '정산 대기' : '지급 완료');
+    var typesLabel = types.length ? types.map(function(t){ return typeLabels[t]; }).join(', ') : '(선택 없음)';
+    var adjLine = adjToggle.checked ? ('+' + (adjDays.value || 0) + '일 포함') : '미포함';
+    return {
+      year: yearSelect.value, month: monthSelect.value, unit: unit,
+      status: statusLabel, types: types, typesLabel: typesLabel, adjLine: adjLine
+    };
+  }
+
+  function pad(n){ return String(n).length < 2 ? '0' + n : String(n); }
+
+  // 실제 정산 데이터가 아니라 "다운로드 요청서" 내용을 표(key, value) 형태로 만든다 —
+  // Databricks가 연결되면 이 자리에 실제 정산 라인아이템 표가 들어가게 된다.
+  function buildRequestRows(vendor, cond, kind){
+    var now = new Date();
+    var ts = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    var kindLabel = kind === 'vendor' ? '업체 교부용 (판매가 컬럼 제외)' : '내부 아카이빙용 (전체 컬럼 포함)';
+    return [
+      ['필드', '값'],
+      ['업체', vendor.name + ' (' + vendor.dbCode + ')'],
+      ['담당자', currentManager(vendor)],
+      ['정산기간', cond.year + '년 ' + cond.month + '월'],
+      ['조회단위', cond.unit],
+      ['정산상태', cond.status],
+      ['정산유형', cond.typesLabel],
+      ['보정건 추가조회', cond.adjLine],
+      ['요청 구분', kindLabel],
+      ['생성일시', ts],
+      ['안내', '이 파일은 아직 실제 정산 데이터가 아닙니다. 이 콘솔은 아직 Databricks에 직접 연결되어 있지 않아 위 조건을 정리한 요청서만 생성됩니다. 실제 정산 데이터 추출은 이 요청서를 정산AX 담당자(Claude)에게 전달해 진행해 주세요.']
+    ];
+  }
+
+  function rowsToCsvText(rows){
+    return rows.map(function(r){
+      return r.map(function(cell){
+        var s = String(cell == null ? '' : cell);
+        if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(',');
+    }).join('\r\n');
+  }
+
+  function getFileFormat(){
+    var el = document.querySelector('input[name="fileFormat"]:checked');
+    return el ? el.value : 'csv';
+  }
+
+  function sanitizeForFilename(s){
+    return String(s).replace(/[\\/:*?"<>|]/g, '').trim();
+  }
+
+  function filenameFor(vendor, cond, kind, ext){
+    var yy = String(cond.year).slice(-2);
+    var yymm = yy + pad(cond.month);
+    var name = sanitizeForFilename(vendor.name);
+    var suffix = kind === 'archive' ? '_아카이브' : '';
+    return yymm + '_' + name + suffix + '.' + ext;
+  }
+
+  function updateSummary(){
+    var cond = buildConditions();
+    var sel = selectedVendors();
+    var mgrLabel = execMgrFilter.value === 'all' ? '전체' : execMgrFilter.value;
+    document.getElementById('sum-manager').textContent = mgrLabel;
+    document.getElementById('sum-vendor-count').textContent = sel.length + '곳';
+    document.getElementById('sum-period').textContent = cond.year + '년 ' + cond.month + '월';
+    document.getElementById('sum-types').textContent = cond.typesLabel;
+    document.getElementById('sum-status').textContent = cond.status;
+
+    var typeWarn = document.getElementById('type-warn');
+    typeWarn.style.display = cond.types.length ? 'none' : 'block';
+
+    var ready = sel.length > 0 && cond.types.length > 0;
+    document.getElementById('btn-batch-vendor').disabled = !ready;
+    document.getElementById('btn-batch-archive').disabled = !ready;
+
+    var ext = getFileFormat();
+    if (sel.length){
+      document.getElementById('sum-filename').textContent = filenameFor(sel[0], cond, 'vendor', ext);
+      document.getElementById('receipt-text').textContent = rowsToCsvText(buildRequestRows(sel[0], cond, 'vendor'));
+    } else {
+      document.getElementById('sum-filename').textContent = '–';
+    }
+  }
+
+  document.getElementById('type-checks').addEventListener('change', updateSummary);
+  document.getElementById('status-select').addEventListener('change', updateSummary);
+  document.getElementById('period-unit').addEventListener('change', updateSummary);
+  document.getElementById('file-format-group').addEventListener('change', updateSummary);
+  yearSelect.addEventListener('change', updateSummary);
+  monthSelect.addEventListener('change', updateSummary);
+  adjToggle.addEventListener('change', function(){ syncAdjDaysState(); updateSummary(); });
+  adjDays.addEventListener('input', updateSummary);
+
+  document.getElementById('btn-preview-toggle').addEventListener('click', function(){
+    var box = document.getElementById('receipt-box');
+    box.hidden = !box.hidden;
+    this.textContent = box.hidden ? '예시 파일 미리보기' : '예시 미리보기 닫기';
+  });
+
+  /* =================================================================
+     PANEL: 정산 실행 — 일괄 다운로드 실행
+  ================================================================= */
+  function appendLogRow(no, name, state, text){
+    var log = document.getElementById('run-log');
+    var row = document.createElement('div');
+    row.className = 'run-log-row ' + state;
+    row.setAttribute('data-no', no);
+    row.innerHTML = '<span class="name">' + escapeHtml(name) + '</span><span class="state">' + escapeHtml(text) + '</span>';
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+  function updateLogRow(no, state, text){
+    var row = document.querySelector('.run-log-row[data-no="' + no + '"]');
+    if (!row) return;
+    row.className = 'run-log-row ' + state;
+    row.querySelector('.state').textContent = text;
+  }
+
+  function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function saveBlob(filename, blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  // XLSX는 실제 엑셀 바이너리를 만들어야 해서 SheetJS(xlsx) 라이브러리가 필요하다.
+  // 처음 XLSX를 요청할 때만 CDN에서 불러오고(네트워크 필요), 이후로는 캐시된 걸 재사용한다.
+  var _xlsxLibPromise = null;
+  function loadXlsxLib(){
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (_xlsxLibPromise) return _xlsxLibPromise;
+    _xlsxLibPromise = new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = function(){ resolve(window.XLSX); };
+      s.onerror = function(){ _xlsxLibPromise = null; reject(new Error('XLSX 변환 라이브러리를 불러오지 못했습니다(네트워크 확인 필요)')); };
+      document.head.appendChild(s);
+    });
+    return _xlsxLibPromise;
+  }
+
+  async function triggerDownloadRows(filename, rows, format){
+    try {
+      if (format === 'xlsx'){
+        var XLSX = await loadXlsxLib();
+        var ws = XLSX.utils.aoa_to_sheet(rows);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '정산요청');
+        var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        saveBlob(filename, new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      } else {
+        saveBlob(filename, new Blob(['﻿' + rowsToCsvText(rows)], { type: 'text/csv;charset=utf-8' }));
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: (err && err.message) || '알 수 없는 오류' };
+    }
+  }
+
+  async function runBatch(kind){
+    var cond = buildConditions();
+    var vendors = selectedVendors();
+    var format = getFileFormat();
+    var btnVendor = document.getElementById('btn-batch-vendor');
+    var btnArchive = document.getElementById('btn-batch-archive');
+    var log = document.getElementById('run-log');
+    var summaryEl = document.getElementById('run-summary');
+    log.innerHTML = '';
+    summaryEl.textContent = '';
+
+    if (!vendors.length || !cond.types.length){
+      summaryEl.textContent = '선택된 업체 또는 정산유형이 없습니다.';
+      return;
+    }
+
+    btnVendor.disabled = true;
+    btnArchive.disabled = true;
+
+    var okCount = 0, failCount = 0;
+
+    for (var i = 0; i < vendors.length; i++){
+      var v = vendors[i];
+      appendLogRow(v.no, v.name, 'pending', format === 'xlsx' && i === 0 ? '변환 라이브러리 로딩 중…' : '저장 중…');
+      var rows = buildRequestRows(v, cond, kind);
+      var filename = filenameFor(v, cond, kind, format);
+      var result = await triggerDownloadRows(filename, rows, format);
+      if (result.ok){
+        okCount++;
+        updateLogRow(v.no, 'ok', '저장됨');
+      } else {
+        failCount++;
+        updateLogRow(v.no, 'error', '오류 (' + result.message + ')');
+        if (format === 'xlsx' && !window.XLSX){
+          // 라이브러리 로딩 자체가 실패한 경우, 나머지 업체를 계속 시도해도 똑같이 실패할 뿐이므로 중단.
+          summaryEl.textContent = 'XLSX 변환 라이브러리 로딩 실패로 중단됨 — CSV로 다시 시도해 주세요.';
+          btnVendor.disabled = false;
+          btnArchive.disabled = false;
+          updateSummary();
+          return;
+        }
+      }
+      // 브라우저가 "여러 파일 자동 다운로드"로 한꺼번에 막지 않도록 파일 사이에 짧게 간격을 둔다.
+      await sleep(250);
+    }
+
+    summaryEl.textContent = '완료 — 총 ' + vendors.length + '곳 중 저장 ' + okCount + ' · 실패 ' + failCount +
+      (failCount ? '' : ' · 브라우저가 "여러 파일 다운로드"를 처음 물어봤다면 허용해 주세요.');
+    btnVendor.disabled = false;
+    btnArchive.disabled = false;
+    updateSummary();
+  }
+
+  document.getElementById('btn-batch-vendor').addEventListener('click', function(){ runBatch('vendor'); });
+  document.getElementById('btn-batch-archive').addEventListener('click', function(){ runBatch('archive'); });
+
+  /* =================================================================
+     INIT
+  ================================================================= */
+  renderStats();
+  renderVendorTable();
+  refreshVendorChecklist();
+  initManagerSheetSync();
+  selectPanel(initialActivePanel);
+})();
+</script>
+</body>
+</html>
