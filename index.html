@@ -540,8 +540,9 @@
                   <label class="field-label" for="status-select">정산상태</label>
                   <select class="ctl" id="status-select">
                     <option value="all">전체</option>
-                    <option value="pending">정산 대기</option>
-                    <option value="paid">지급 완료</option>
+                    <option value="정산대기">정산 대기</option>
+                    <option value="묶음완료">묶음 완료</option>
+                    <option value="지급완료">지급 완료</option>
                   </select>
                 </div>
               </div>
@@ -561,7 +562,18 @@
           <div>
             <div class="banner info">
               <span>ℹ</span>
-              <span>이 콘솔은 아직 Databricks에 직접 연결되어 있지 않습니다. 아래 버튼은 실제 정산 데이터가 아니라 조건을 정리한 <strong>다운로드 요청서</strong>를 업체별 파일로 생성하며, 실제 정산 데이터 추출은 이 요청서를 정산AX 담당자(Claude)에게 전달해 진행합니다.</span>
+              <span>이 콘솔은 정산 데이터가 게시된 구글시트(CSV)를 직접 읽어와, 조건에 맞는 실제 정산 내역을 업체별 파일로 생성합니다. 담당자와 마찬가지로 이 화면에서는 데이터를 수정할 수 없으며, 원본 시트가 갱신되면 새로고침으로 반영됩니다.</span>
+            </div>
+
+            <div class="sheet-meta" style="margin-bottom:14px;">
+              <span id="settlement-sync-status">불러오는 중…</span>
+              <button class="icon-btn-sm" id="settlement-refresh-btn" type="button" title="다시 불러오기" aria-label="다시 불러오기">
+                <svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18.6 16M20 11V5M20 11h-6"/></svg>
+              </button>
+            </div>
+            <div id="settlement-banner" class="banner warn" hidden>
+              <span>⚠</span>
+              <span id="settlement-banner-text"></span>
             </div>
 
             <div class="card card-pad summary-card">
@@ -585,11 +597,11 @@
             <div class="btn-col">
               <div>
                 <button class="btn primary" id="btn-batch-vendor" style="width:100%;">업체 교부용 일괄 다운로드</button>
-                <div class="btn-note">판매가 컬럼 제외 · 업체별 파일 1개씩 · 업체 전달용</div>
+                <div class="btn-note">판매가·ITEM_ID·PARTNER_ID 컬럼 제외 · 업체별 파일 1개씩 · 업체 전달용</div>
               </div>
               <div>
                 <button class="btn primary" id="btn-batch-archive" style="width:100%;">내부 아카이빙용 일괄 다운로드</button>
-                <div class="btn-note">전체 컬럼 포함 · 업체별 파일 1개씩 · 내부 보관용</div>
+                <div class="btn-note">ITEM_ID·PARTNER_ID 컬럼만 제외(판매가 포함) · 업체별 파일 1개씩 · 내부 보관용</div>
               </div>
               <button class="btn ghost" id="btn-preview-toggle" type="button" style="width:100%;">예시 파일 미리보기</button>
             </div>
@@ -767,6 +779,11 @@
   // 담당자 변경은 이 콘솔이 아니라 저 시트에서 직접 한다 — 여기는 읽기만 한다.
   var MANAGER_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTu2WevRPjPUGdzH4woPBFa-pgIbSFk4yKHi74OvYU87opA8H5aepK4qUt12IVNhO0Xdyn25JANHWSb/pub?gid=1868901458&single=true&output=csv';
 
+  // "정산 AX" 시트(정산 라인아이템)를 파일 → 공유 → 웹에 게시로 내보낸 CSV 링크.
+  // 컬럼 순서: ITEM_ID, 업체명, PARTNER_ID, 정산년월, 주문번호, 주문생성일, 정산기준시각,
+  //           상품번호, 항목설명, 수량, 판매가, 정산금, 정산유형, 상태, 상품옵션
+  var SETTLEMENT_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSRe2Ys3XlT8PLAFKF9QKeS3pjhy7jv61ReYhsRbVv1UYkZN9DineJkaV3qEMlQTS2KzgZDnGUi3bI8/pub?gid=1229201954&single=true&output=csv';
+
   function parseCsv(text){
     // 콤마/따옴표/개행을 포함한 필드까지 다루는 최소 CSV 파서 (RFC4180 기준).
     var rows = [];
@@ -869,6 +886,107 @@
   }
 
   /* =================================================================
+     정산 데이터 — 구글시트(웹에 게시된 CSV) 읽기 전용 동기화
+     정산 실행 탭의 다운로드는 이 데이터를 그대로 필터링해서 만든다.
+     데이터 수정은 이 콘솔이 아니라 저 시트에서(추출 파이프라인을 통해) 한다.
+  ================================================================= */
+  var SETTLEMENT_HEADER = [];   // 시트에서 읽은 헤더 순서 그대로
+  var SETTLEMENT_IDX = null;    // 컬럼명 -> 인덱스
+  var SETTLEMENT_ROWS = [];     // 헤더를 제외한 데이터 행(각 행은 컬럼 순서를 따르는 배열)
+  var settlementLoaded = false;
+
+  var SETTLEMENT_REQUIRED_COLUMNS = [
+    'ITEM_ID', '업체명', 'PARTNER_ID', '정산년월', '주문번호', '주문생성일',
+    '정산기준시각', '상품번호', '항목설명', '수량', '판매가', '정산금', '정산유형', '상태', '상품옵션'
+  ];
+
+  function applySettlementRowsFromSheet(rows){
+    if (!rows.length) throw new Error('시트에 데이터가 없음');
+    var header = rows[0].map(function(h){ return h.trim(); });
+    var missing = SETTLEMENT_REQUIRED_COLUMNS.filter(function(c){ return header.indexOf(c) === -1; });
+    if (missing.length) throw new Error('시트 헤더 형식이 예상과 다름 (누락된 컬럼: ' + missing.join(', ') + ')');
+    var idx = {};
+    header.forEach(function(h, i){ idx[h] = i; });
+    SETTLEMENT_HEADER = header;
+    SETTLEMENT_IDX = idx;
+    SETTLEMENT_ROWS = rows.slice(1).filter(function(r){ return r.length > 1 || (r[0] || '').trim() !== ''; });
+  }
+
+  // 정산 시트의 PARTNER_ID가 담당자 시트(VENDORS)에 없는 업체명이 있으면
+  // (예: 표기 오류로 PARTNER_ID가 어긋난 경우) 다운로드에서 조용히 누락되므로 알려준다.
+  function findUnmatchedSettlementVendors(){
+    var knownIds = {};
+    VENDORS.forEach(function(v){ if (v.partnerId) knownIds[v.partnerId] = true; });
+    var idx = SETTLEMENT_IDX;
+    var unmatchedNames = {};
+    SETTLEMENT_ROWS.forEach(function(r){
+      var pid = (r[idx.PARTNER_ID] || '').trim();
+      if (pid && !knownIds[pid]) unmatchedNames[(r[idx.업체명] || '').trim()] = true;
+    });
+    return Object.keys(unmatchedNames);
+  }
+
+  function setSettlementSyncUi(state, detail){
+    var statusEl = document.getElementById('settlement-sync-status');
+    var banner = document.getElementById('settlement-banner');
+    var bannerText = document.getElementById('settlement-banner-text');
+    var refreshBtn = document.getElementById('settlement-refresh-btn');
+    refreshBtn.classList.toggle('spinning', state === 'loading');
+    if (state === 'loading'){
+      statusEl.textContent = '정산 데이터 불러오는 중…';
+      banner.hidden = true;
+    } else if (state === 'ok'){
+      var now = new Date();
+      var hh = now.getHours(), mm = now.getMinutes();
+      var ampm = hh < 12 ? '오전' : '오후';
+      var hh12 = hh % 12 || 12;
+      statusEl.textContent = '정산 데이터 ' + SETTLEMENT_ROWS.length + '건 · 마지막 갱신 ' + ampm + ' ' + hh12 + ':' + (mm < 10 ? '0' + mm : mm);
+      var unmatched = findUnmatchedSettlementVendors();
+      if (unmatched.length){
+        banner.hidden = false;
+        bannerText.textContent = '정산 시트의 일부 업체명이 담당자 시트의 PARTNER_ID와 매칭되지 않아 다운로드에서 제외됩니다: ' +
+          unmatched.join(', ') + ' — 담당자 시트의 PARTNER_ID 값을 확인해 주세요.';
+      } else {
+        banner.hidden = true;
+      }
+    } else {
+      statusEl.textContent = '정산 데이터를 불러오지 못했습니다';
+      banner.hidden = false;
+      bannerText.textContent = detail || '정산 시트를 불러오지 못했습니다. 다시 불러오기를 눌러 재시도해 주세요.';
+    }
+  }
+
+  function refreshSettlementSheet(){
+    setSettlementSyncUi('loading');
+    settlementLoaded = false;
+    updateSummary();
+    return fetch(SETTLEMENT_SHEET_CSV_URL, { cache: 'no-store' })
+      .then(function(res){
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function(text){
+        var rows = parseCsv(text);
+        applySettlementRowsFromSheet(rows);
+        settlementLoaded = true;
+        setSettlementSyncUi('ok');
+        updateSummary();
+      })
+      .catch(function(err){
+        settlementLoaded = false;
+        setSettlementSyncUi('error', '정산 시트를 불러오지 못했습니다 (' + (err && err.message ? err.message : '네트워크 오류') + ').');
+        updateSummary();
+      });
+  }
+
+  function initSettlementSheetSync(){
+    document.getElementById('settlement-refresh-btn').addEventListener('click', function(){ refreshSettlementSheet(); });
+    refreshSettlementSheet();
+    // 페이지를 오래 열어두는 경우를 대비해 5분마다 자동으로 다시 확인.
+    setInterval(refreshSettlementSheet, 5 * 60 * 1000);
+  }
+
+  /* =================================================================
      PANEL: 정산 실행 — 대상 업체 체크리스트
   ================================================================= */
   var execMgrFilter = document.getElementById('exec-mgr-filter');
@@ -966,37 +1084,86 @@
   function buildConditions(){
     var types = getSelectedTypes();
     var unit = document.querySelector('input[name="unit"]:checked').value === 'order' ? '주문단위' : '정산묶음단위';
-    var statusVal = document.getElementById('status-select').value;
-    var statusLabel = statusVal === 'all' ? '전체' : (statusVal === 'pending' ? '정산 대기' : '지급 완료');
+    var statusSelect = document.getElementById('status-select');
+    var statusVal = statusSelect.value; // 'all' 또는 시트의 실제 상태값(정산대기/묶음완료/지급완료)
+    var statusLabel = statusSelect.options[statusSelect.selectedIndex].text;
     var typesLabel = types.length ? types.map(function(t){ return typeLabels[t]; }).join(', ') : '(선택 없음)';
-    var adjLine = adjToggle.checked ? ('+' + (adjDays.value || 0) + '일 포함') : '미포함';
+    var adjEnabled = adjToggle.checked;
+    var adjDaysVal = Number(adjDays.value || 0);
     return {
       year: yearSelect.value, month: monthSelect.value, unit: unit,
-      status: statusLabel, types: types, typesLabel: typesLabel, adjLine: adjLine
+      statusVal: statusVal, status: statusLabel, types: types, typesLabel: typesLabel,
+      adjEnabled: adjEnabled, adjDays: adjDaysVal,
+      adjLine: adjEnabled ? ('+' + adjDaysVal + '일 포함') : '미포함'
     };
   }
 
   function pad(n){ return String(n).length < 2 ? '0' + n : String(n); }
 
-  // 실제 정산 데이터가 아니라 "다운로드 요청서" 내용을 표(key, value) 형태로 만든다 —
-  // Databricks가 연결되면 이 자리에 실제 정산 라인아이템 표가 들어가게 된다.
-  function buildRequestRows(vendor, cond, kind){
-    var now = new Date();
-    var ts = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-    var kindLabel = kind === 'vendor' ? '업체 교부용 (판매가 컬럼 제외)' : '내부 아카이빙용 (전체 컬럼 포함)';
-    return [
-      ['필드', '값'],
-      ['업체', vendor.name + ' (' + vendor.dbCode + ')'],
-      ['담당자', currentManager(vendor)],
-      ['정산기간', cond.year + '년 ' + cond.month + '월'],
-      ['조회단위', cond.unit],
-      ['정산상태', cond.status],
-      ['정산유형', cond.typesLabel],
-      ['보정건 추가조회', cond.adjLine],
-      ['요청 구분', kindLabel],
-      ['생성일시', ts],
-      ['안내', '이 파일은 아직 실제 정산 데이터가 아닙니다. 이 콘솔은 아직 Databricks에 직접 연결되어 있지 않아 위 조건을 정리한 요청서만 생성됩니다. 실제 정산 데이터 추출은 이 요청서를 정산AX 담당자(Claude)에게 전달해 진행해 주세요.']
-    ];
+  // "YYYY-MM-DD HH:MM:SS" 또는 ISO(...Z) 형식의 날짜 문자열을 느슨하게 파싱한다.
+  function parseDateLoose(s){
+    if (!s) return null;
+    var d = new Date(String(s).trim().replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // year/month(둘 다 1-based, 사람이 읽는 값) 기준 그 달의 마지막 날 23:59:59.999
+  function periodEndDate(year, month){
+    return new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
+  }
+
+  // 이 정산 라인아이템 한 줄이 선택된 정산기간에 해당하는지 판단한다.
+  // - 기본: 정산년월(YYYY-MM)이 선택된 연/월과 일치하면 포함.
+  // - 정산유형이 "정산 보정"이고 "보정건 추가조회"가 켜져 있으면, 정산년월이 달라도
+  //   정산기준시각이 [조회기간 종료일, 종료일+N일] 사이면 추가로 포함한다.
+  function rowMatchesPeriod(ym, type, settleAtRaw, orderDateRaw, cond){
+    var wanted = cond.year + '-' + pad(cond.month);
+    if (ym === wanted) return true;
+    if (type === typeLabels.adjustment && cond.adjEnabled){
+      var d = parseDateLoose(settleAtRaw) || parseDateLoose(orderDateRaw);
+      if (!d) return false;
+      var end = periodEndDate(cond.year, cond.month);
+      var windowEnd = new Date(end.getTime());
+      windowEnd.setDate(windowEnd.getDate() + cond.adjDays);
+      return d.getTime() > end.getTime() && d.getTime() <= windowEnd.getTime();
+    }
+    return false;
+  }
+
+  // 선택된 업체(PARTNER_ID) + 조건에 맞는 정산 라인아이템 원본 행(컬럼 순서 그대로)만 골라낸다.
+  function filterSettlementRows(vendor, cond){
+    if (!settlementLoaded || !SETTLEMENT_IDX) return [];
+    var idx = SETTLEMENT_IDX;
+    var wantedTypes = cond.types.map(function(t){ return typeLabels[t]; });
+    return SETTLEMENT_ROWS.filter(function(r){
+      if ((r[idx.PARTNER_ID] || '').trim() !== vendor.partnerId) return false;
+      var status = (r[idx.상태] || '').trim();
+      if (cond.statusVal !== 'all' && status !== cond.statusVal) return false;
+      var type = (r[idx.정산유형] || '').trim();
+      if (wantedTypes.indexOf(type) === -1) return false;
+      var ym = (r[idx.정산년월] || '').trim();
+      return rowMatchesPeriod(ym, type, r[idx.정산기준시각], r[idx.주문생성일], cond);
+    });
+  }
+
+  var SETTLEMENT_EXCLUDE_COLS = {
+    vendor: ['판매가', 'ITEM_ID', 'PARTNER_ID'],   // 업체 교부용: 판매가 + 내부 식별자 제외
+    archive: ['ITEM_ID', 'PARTNER_ID']              // 내부 아카이빙용: 내부 식별자만 제외(판매가 포함)
+  };
+
+  // 업체 + 조건 + 다운로드 종류(kind: 'vendor' | 'archive')에 맞는 CSV용 표를 만든다.
+  // 반환된 header/rows는 SETTLEMENT_EXCLUDE_COLS[kind]에 해당하는 컬럼이 제외된 상태다.
+  function buildSettlementTable(vendor, cond, kind){
+    var excludeNames = SETTLEMENT_EXCLUDE_COLS[kind] || [];
+    var dropIdx = {};
+    excludeNames.forEach(function(name){
+      var i = SETTLEMENT_HEADER.indexOf(name);
+      if (i !== -1) dropIdx[i] = true;
+    });
+    var header = SETTLEMENT_HEADER.filter(function(_, i){ return !dropIdx[i]; });
+    var matched = filterSettlementRows(vendor, cond);
+    var rows = matched.map(function(r){ return r.filter(function(_, i){ return !dropIdx[i]; }); });
+    return { header: header, rows: rows, matchedCount: matched.length };
   }
 
   function rowsToCsvText(rows){
@@ -1039,16 +1206,26 @@
     var typeWarn = document.getElementById('type-warn');
     typeWarn.style.display = cond.types.length ? 'none' : 'block';
 
-    var ready = sel.length > 0 && cond.types.length > 0;
+    var ready = sel.length > 0 && cond.types.length > 0 && settlementLoaded;
     document.getElementById('btn-batch-vendor').disabled = !ready;
     document.getElementById('btn-batch-archive').disabled = !ready;
 
     var ext = getFileFormat();
     if (sel.length){
       document.getElementById('sum-filename').textContent = filenameFor(sel[0], cond, 'vendor', ext);
-      document.getElementById('receipt-text').textContent = rowsToCsvText(buildRequestRows(sel[0], cond, 'vendor'));
+      if (settlementLoaded){
+        var table = buildSettlementTable(sel[0], cond, 'vendor');
+        var previewRows = [table.header].concat(table.rows.slice(0, 8));
+        var text = rowsToCsvText(previewRows);
+        if (table.rows.length > 8) text += '\r\n… (총 ' + table.rows.length + '건 중 8건만 표시)';
+        else if (!table.rows.length) text = '(조건에 맞는 정산 내역이 없습니다)\r\n\r\n' + rowsToCsvText([table.header]);
+        document.getElementById('receipt-text').textContent = text;
+      } else {
+        document.getElementById('receipt-text').textContent = '정산 데이터를 불러오는 중이거나 불러오지 못했습니다.';
+      }
     } else {
       document.getElementById('sum-filename').textContent = '–';
+      document.getElementById('receipt-text').textContent = '';
     }
   }
 
@@ -1121,7 +1298,7 @@
         var XLSX = await loadXlsxLib();
         var ws = XLSX.utils.aoa_to_sheet(rows);
         var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '정산요청');
+        XLSX.utils.book_append_sheet(wb, ws, '정산내역');
         var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         saveBlob(filename, new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       } else {
@@ -1144,6 +1321,10 @@
     log.innerHTML = '';
     summaryEl.textContent = '';
 
+    if (!settlementLoaded){
+      summaryEl.textContent = '정산 데이터를 아직 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.';
+      return;
+    }
     if (!vendors.length || !cond.types.length){
       summaryEl.textContent = '선택된 업체 또는 정산유형이 없습니다.';
       return;
@@ -1152,17 +1333,19 @@
     btnVendor.disabled = true;
     btnArchive.disabled = true;
 
-    var okCount = 0, failCount = 0;
+    var okCount = 0, failCount = 0, emptyCount = 0;
 
     for (var i = 0; i < vendors.length; i++){
       var v = vendors[i];
       appendLogRow(v.no, v.name, 'pending', format === 'xlsx' && i === 0 ? '변환 라이브러리 로딩 중…' : '저장 중…');
-      var rows = buildRequestRows(v, cond, kind);
+      var table = buildSettlementTable(v, cond, kind);
+      var rows = [table.header].concat(table.rows);
       var filename = filenameFor(v, cond, kind, format);
       var result = await triggerDownloadRows(filename, rows, format);
       if (result.ok){
         okCount++;
-        updateLogRow(v.no, 'ok', '저장됨');
+        if (!table.matchedCount) emptyCount++;
+        updateLogRow(v.no, table.matchedCount ? 'ok' : 'skip', '저장됨 · ' + table.matchedCount + '건');
       } else {
         failCount++;
         updateLogRow(v.no, 'error', '오류 (' + result.message + ')');
@@ -1180,6 +1363,7 @@
     }
 
     summaryEl.textContent = '완료 — 총 ' + vendors.length + '곳 중 저장 ' + okCount + ' · 실패 ' + failCount +
+      (emptyCount ? ' · 조건에 맞는 내역 없음 ' + emptyCount + '곳' : '') +
       (failCount ? '' : ' · 브라우저가 "여러 파일 다운로드"를 처음 물어봤다면 허용해 주세요.');
     btnVendor.disabled = false;
     btnArchive.disabled = false;
@@ -1196,6 +1380,7 @@
   renderVendorTable();
   refreshVendorChecklist();
   initManagerSheetSync();
+  initSettlementSheetSync();
   selectPanel(initialActivePanel);
 })();
 </script>
