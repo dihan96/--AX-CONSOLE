@@ -231,9 +231,6 @@
   .banner.warn{background:var(--warning-soft);border-color:transparent;color:var(--warning);}
 
   /* ---------- exec tab layout ---------- */
-  .exec-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;}
-  @media (max-width:900px){.exec-grid{grid-template-columns:1fr;}}
-
   fieldset.group{border:1px solid var(--border);border-radius:10px;padding:14px 16px 16px;margin:0 0 14px;}
   fieldset.group:last-child{margin-bottom:0;}
   fieldset.group legend{
@@ -280,13 +277,6 @@
   .vendor-check-row .vcode{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);flex:none;}
   .vendor-check-row .vbadge{flex:none;}
 
-  /* ---------- right column: summary + actions ---------- */
-  .summary-card{margin-bottom:14px;}
-  .summary-line{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--border);}
-  .summary-line:last-child{border-bottom:none;}
-  .summary-line .k{color:var(--text-muted);}
-  .summary-line .v{font-weight:600;text-align:right;}
-
   button.btn{
     appearance:none;border:1px solid var(--border-strong);border-radius:9px;
     background:var(--surface);color:var(--text);font-size:13px;font-weight:600;
@@ -298,8 +288,7 @@
   button.btn:disabled{opacity:.45;cursor:not-allowed;}
   button.btn:disabled:hover{border-color:var(--border-strong);}
   button.btn.ghost{background:transparent;}
-  .btn-col{display:flex;flex-direction:column;gap:10px;}
-  .btn-col .btn-note{font-size:11px;color:var(--text-faint);margin-top:-4px;padding-left:2px;}
+  .btn-note{font-size:11px;color:var(--text-faint);margin-top:6px;padding-left:2px;}
 
   .run-log{
     margin-top:14px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;
@@ -315,32 +304,6 @@
   .run-log-row.error .state{color:var(--stamp);}
   .run-log-row.pending .state{color:var(--text-faint);}
   .run-summary{font-size:12.5px;font-weight:600;margin-top:10px;white-space:pre-line;}
-
-  /* ---------- receipt / example preview ---------- */
-  .receipt{
-    background:var(--surface-alt);
-    border:1px dashed var(--border-strong);
-    border-radius:10px;
-    padding:16px 16px 14px;
-    position:relative;
-  }
-  .receipt::before{
-    content:"AX";
-    position:absolute;top:12px;right:14px;
-    width:32px;height:32px;border-radius:50%;
-    border:2px solid var(--stamp);color:var(--stamp);
-    display:flex;align-items:center;justify-content:center;
-    font-family:var(--font-display);font-weight:700;font-size:11px;
-    transform:rotate(-14deg);opacity:.5;
-  }
-  .receipt h3{
-    font-family:var(--font-display);font-size:13.5px;font-weight:600;margin:0 0 8px;
-    padding-bottom:8px;border-bottom:1px dashed var(--border-strong);
-  }
-  .receipt pre{
-    font-family:var(--font-mono);font-size:11px;line-height:1.7;
-    white-space:pre-wrap;word-break:break-word;margin:0;color:var(--text);
-  }
 
   /* ---------- Google 시트 동기화 placeholder tab ---------- */
   .placeholder-card{padding:36px 28px;text-align:center;}
@@ -475,193 +438,143 @@
       <section id="panel-exec" class="panel" hidden>
         <div class="page-head">
           <h1>정산 실행</h1>
-          <p>담당자와 기간·조회조건을 정하면, 대상 업체 전체에 대해 업체별로 파일을 하나씩 순서대로 다운로드합니다.</p>
+          <p>정산 데이터가 게시된 구글시트(CSV)를 읽어와, 조건에 맞는 실제 정산 내역을 업체별 xlsx 파일로 저장합니다. 이 화면에서는 데이터를 수정할 수 없습니다.</p>
         </div>
 
-        <div class="exec-grid">
-
-          <!-- left: 조건 설정 -->
-          <div>
-            <fieldset class="group">
-              <legend>대상 업체</legend>
-              <div class="field-row" style="margin-bottom:12px;">
-                <div class="field">
-                  <label class="field-label" for="exec-mgr-filter">담당자</label>
-                  <select class="ctl" id="exec-mgr-filter">
-                    <option value="all">전체</option>
-                    <option value="소영">소영</option>
-                    <option value="대일">대일</option>
-                  </select>
-                </div>
-              </div>
-              <div class="checklist-toolbar">
-                <span class="count" id="checklist-count">–</span>
-                <span>
-                  <button class="link-btn" id="check-all-btn" type="button">전체 선택</button>
-                  · <button class="link-btn" id="check-none-btn" type="button">전체 해제</button>
-                </span>
-              </div>
-              <div class="vendor-checklist" id="vendor-checklist"></div>
-              <p class="hint">PARTNER_ID가 아직 확보되지 않은 업체는 자동으로 제외됩니다.</p>
-            </fieldset>
-
-            <fieldset class="group">
-              <legend>기간 설정</legend>
-              <div class="field-row">
-                <div class="field">
-                  <label class="field-label" for="period-year">연도</label>
-                  <select class="ctl" id="period-year"></select>
-                </div>
-                <div class="field">
-                  <label class="field-label" for="period-month">월</label>
-                  <select class="ctl" id="period-month"></select>
-                </div>
-                <div class="field">
-                  <label class="field-label" for="period-unit">조회 단위</label>
-                  <div class="radio-group" id="period-unit" style="padding-top:8px;">
-                    <label class="radio-item"><input type="radio" name="unit" value="order"> 주문단위</label>
-                    <label class="radio-item"><input type="radio" name="unit" value="batch" checked> 정산묶음단위</label>
-                  </div>
-                </div>
-              </div>
-            </fieldset>
-
-            <fieldset class="group">
-              <legend>조회조건</legend>
-              <div class="field" style="margin-bottom:12px;">
-                <span class="field-label">정산유형</span>
-                <div class="checkbox-grid" id="type-checks">
-                  <label class="check-item"><input type="checkbox" value="sale" checked> 상품 판매</label>
-                  <label class="check-item"><input type="checkbox" value="refund" checked> 상품 환불</label>
-                  <label class="check-item"><input type="checkbox" value="delivery" checked> 배송비</label>
-                  <label class="check-item"><input type="checkbox" value="deliveryRefund" checked> 배송비 환불</label>
-                  <label class="check-item"><input type="checkbox" value="adjustment"> 정산 보정</label>
-                </div>
-              </div>
-              <div class="field-row" style="margin-bottom:12px;">
-                <div class="field">
-                  <label class="field-label" for="status-select">정산상태</label>
-                  <select class="ctl" id="status-select">
-                    <option value="all">전체</option>
-                    <option value="정산대기">정산 대기</option>
-                    <option value="묶음완료">묶음 완료</option>
-                    <option value="지급완료">지급 완료</option>
-                  </select>
-                </div>
-              </div>
-              <div class="field">
-                <label class="check-item"><input type="checkbox" id="adj-window-toggle" checked> 보정건 추가조회</label>
-                <div class="field-row" style="margin-top:6px;padding-left:24px;">
-                  <span class="hint" style="margin-top:0;">조회기간 종료일 이후</span>
-                  <input class="ctl" type="number" id="adj-window-days" value="15" min="0" max="60">
-                  <span class="hint" style="margin-top:0;">일까지의 보정건 포함</span>
-                </div>
-              </div>
-              <p class="hint" id="type-warn" style="color:var(--stamp);display:none;">정산유형을 하나 이상 선택해야 합니다.</p>
-            </fieldset>
+        <!-- ① 정산 데이터 -->
+        <div class="card card-pad" style="margin-bottom:14px;">
+          <div class="field-label" style="margin-bottom:8px;">① 정산 데이터</div>
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+            <div id="settlement-count" style="font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:32px;font-weight:700;line-height:1;">–</div>
+            <span class="hint" style="margin-top:0;">건</span>
+          </div>
+          <div class="sheet-meta" style="margin-top:6px;">
+            <span id="settlement-period-label">정산년월 –</span>
+            <span>·</span>
+            <span id="settlement-sync-status">불러오는 중…</span>
+            <button class="icon-btn-sm" id="settlement-refresh-btn" type="button" title="다시 불러오기" aria-label="다시 불러오기">
+              <svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18.6 16M20 11V5M20 11h-6"/></svg>
+            </button>
+          </div>
+          <div id="settlement-banner" class="banner warn" hidden style="margin-top:10px;margin-bottom:0;">
+            <span>⚠</span>
+            <span id="settlement-banner-text"></span>
           </div>
 
-          <!-- right: 요약 + 실행 -->
-          <div>
-            <div class="banner info">
-              <span>ℹ</span>
-              <span>이 콘솔은 정산 데이터가 게시된 구글시트(CSV)를 직접 읽어와, 조건에 맞는 실제 정산 내역을 업체별 파일로 생성합니다. 담당자와 마찬가지로 이 화면에서는 데이터를 수정할 수 없으며, 원본 시트가 갱신되면 새로고침으로 반영됩니다.</span>
+          <div class="field-row" style="margin-top:14px;">
+            <button class="btn primary" id="btn-load-data" type="button">데이터 불러오기</button>
+            <div class="field">
+              <label class="field-label" for="load-requester">요청자</label>
+              <select class="ctl" id="load-requester">
+                <option value="소영">소영</option>
+                <option value="대일">대일</option>
+              </select>
             </div>
-
-            <div class="sheet-meta" style="margin-bottom:14px;">
-              <span id="settlement-sync-status">불러오는 중…</span>
-              <button class="icon-btn-sm" id="settlement-refresh-btn" type="button" title="다시 불러오기" aria-label="다시 불러오기">
-                <svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18.6 16M20 11V5M20 11h-6"/></svg>
-              </button>
-            </div>
-            <div id="settlement-banner" class="banner warn" hidden>
-              <span>⚠</span>
-              <span id="settlement-banner-text"></span>
-            </div>
-
-            <div class="card card-pad summary-card">
-              <div class="summary-line"><span class="k">대상 담당자</span><span class="v" id="sum-manager">–</span></div>
-              <div class="summary-line"><span class="k">선택된 업체</span><span class="v" id="sum-vendor-count">–</span></div>
-              <div class="summary-line"><span class="k">정산기간</span><span class="v" id="sum-period">–</span></div>
-              <div class="summary-line"><span class="k">정산유형</span><span class="v" id="sum-types">–</span></div>
-              <div class="summary-line"><span class="k">정산상태</span><span class="v" id="sum-status">–</span></div>
-              <div class="summary-line"><span class="k">파일명 예시</span><span class="v" id="sum-filename">–</span></div>
-            </div>
-
-            <fieldset class="group" style="margin-bottom:14px;">
-              <legend>파일 형식</legend>
-              <div class="radio-group" id="file-format-group">
-                <label class="radio-item"><input type="radio" name="fileFormat" value="csv" checked> CSV</label>
-                <label class="radio-item"><input type="radio" name="fileFormat" value="xlsx"> XLSX (엑셀)</label>
-              </div>
-              <p class="hint">XLSX는 최초 다운로드 시 변환 라이브러리를 한 번 불러옵니다(인터넷 연결 필요).</p>
-            </fieldset>
-
-            <div class="btn-col">
-              <div>
-                <button class="btn primary" id="btn-batch-vendor" style="width:100%;">업체 교부용 일괄 다운로드</button>
-                <div class="btn-note">판매가·ITEM_ID·PARTNER_ID 컬럼 제외 · 업체별 파일 1개씩 · 업체 전달용</div>
-              </div>
-              <div>
-                <button class="btn primary" id="btn-batch-archive" style="width:100%;">내부 아카이빙용 일괄 다운로드</button>
-                <div class="btn-note">ITEM_ID·PARTNER_ID 컬럼만 제외(판매가 포함) · 업체별 파일 1개씩 · 내부 보관용</div>
-              </div>
-              <button class="btn ghost" id="btn-preview-toggle" type="button" style="width:100%;">예시 파일 미리보기</button>
-            </div>
-
-            <div class="card card-pad receipt" id="receipt-box" hidden style="margin-top:14px;">
-              <h3>예시 미리보기 (선택된 업체 중 첫 번째 기준 · 내용은 CSV/XLSX 공통)</h3>
-              <pre id="receipt-text"></pre>
-            </div>
-
-            <div class="run-log" id="run-log"></div>
-            <div class="run-summary" id="run-summary"></div>
-
-            <fieldset class="group" style="margin-top:14px;">
-              <legend>업체별 교부용 xlsx 로컬 폴더 저장</legend>
-              <p class="hint" style="margin-top:0;">현재 필터(정산년월·정산유형·정산상태)로 업체별 xlsx 파일을 만들어, 저장창 없이 지정한 폴더에 바로 저장합니다. 정산년월이 한 달로 선택돼 있어야 실행할 수 있습니다.</p>
-
-              <div id="bulk-fs-unsupported" class="banner warn" hidden>
-                <span>⚠</span>
-                <span>Chrome 또는 Edge에서만 지원됩니다 (File System Access API 미지원 브라우저).</span>
-              </div>
-
-              <div class="field-row" style="margin-bottom:10px;">
-                <button class="btn" id="bulk-pick-dir-btn" type="button">저장 폴더 선택</button>
-                <span class="hint" style="margin-top:0;">현재 폴더: <strong id="bulk-dir-name">선택 안 됨</strong></span>
-                <button class="btn ghost" id="bulk-dir-permission-btn" type="button" hidden>폴더 접근 허용</button>
-              </div>
-
-              <button class="btn primary" id="btn-bulk-save" style="width:100%;">업체별 일괄 저장 (xlsx)</button>
-              <div class="btn-note">판매가·ITEM_ID·PARTNER_ID·업체명·정산년월 컬럼 제외 · 파일명 YYMM_업체명.xlsx · 동일 파일명 덮어씀</div>
-
-              <div class="run-log" id="bulk-save-log" style="margin-top:10px;"></div>
-              <div class="run-summary" id="bulk-save-summary"></div>
-            </fieldset>
-
-            <fieldset class="group danger" style="margin-top:14px;">
-              <legend>⚠ 내부 아카이빙용 (판매가 포함) — 업체 전달 금지</legend>
-              <p class="hint" style="margin-top:0;">현재 필터(정산년월·정산유형·정산상태)로 업체별 xlsx 파일을 만들어, 저장창 없이 지정한 폴더에 바로 저장합니다. <strong>판매가가 포함된 내부 보관용 파일입니다 — 업체에 전달하지 마세요.</strong> 정산년월이 한 달로 선택돼 있어야 실행할 수 있습니다.</p>
-
-              <div id="bulk-fs-archive-unsupported" class="banner warn" hidden>
-                <span>⚠</span>
-                <span>Chrome 또는 Edge에서만 지원됩니다 (File System Access API 미지원 브라우저).</span>
-              </div>
-
-              <div class="field-row" style="margin-bottom:10px;">
-                <button class="btn" id="bulk-pick-archive-dir-btn" type="button">내부용 저장 폴더 선택</button>
-                <span class="hint" style="margin-top:0;">현재 폴더: <strong id="bulk-archive-dir-name">선택 안 됨</strong></span>
-                <button class="btn ghost" id="bulk-archive-dir-permission-btn" type="button" hidden>폴더 접근 허용</button>
-              </div>
-
-              <button class="btn primary" id="btn-bulk-archive-save" style="width:100%;">내부용 일괄 저장 (xlsx)</button>
-              <div class="btn-note">ITEM_ID·PARTNER_ID·업체명·정산년월 컬럼 제외(판매가 포함) · 파일명 YYMM_업체명.xlsx · 동일 파일명 덮어씀</div>
-
-              <div class="run-log" id="bulk-archive-save-log" style="margin-top:10px;"></div>
-              <div class="run-summary" id="bulk-archive-save-summary"></div>
-            </fieldset>
+            <a class="link-btn" href="https://docs.google.com/spreadsheets/d/1TgBgyxMTNCf-u8musTXlDfRiosTklLPomjCWcKegOFQ/edit" target="_blank" rel="noopener">시트 보러가기 ↗</a>
           </div>
+          <p class="hint" id="load-status-text" style="margin-top:8px;"></p>
         </div>
+
+        <!-- ② 담당자 선택 + 대상 업체 목록 -->
+        <fieldset class="group">
+          <legend>② 담당자 선택 + 대상 업체 목록</legend>
+          <div class="field-row" style="margin-bottom:12px;">
+            <div class="field">
+              <label class="field-label" for="exec-mgr-filter">담당자</label>
+              <select class="ctl" id="exec-mgr-filter">
+                <option value="all">전체</option>
+                <option value="소영">소영</option>
+                <option value="대일">대일</option>
+              </select>
+            </div>
+          </div>
+          <div class="checklist-toolbar">
+            <span class="count" id="checklist-count">–</span>
+            <span>
+              <button class="link-btn" id="check-all-btn" type="button">전체 선택</button>
+              · <button class="link-btn" id="check-none-btn" type="button">전체 해제</button>
+            </span>
+          </div>
+          <div class="vendor-checklist" id="vendor-checklist"></div>
+          <p class="hint">PARTNER_ID가 아직 확보되지 않은 업체는 자동으로 제외됩니다.</p>
+        </fieldset>
+
+        <!-- ③ 기간 설정 -->
+        <fieldset class="group">
+          <legend>③ 기간 설정</legend>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label" for="period-year">연도</label>
+              <select class="ctl" id="period-year"></select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="period-month">월</label>
+              <select class="ctl" id="period-month"></select>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- ④ 조회 조건 -->
+        <fieldset class="group">
+          <legend>④ 조회 조건</legend>
+          <div class="field">
+            <span class="field-label">정산유형</span>
+            <div class="checkbox-grid" id="type-checks">
+              <label class="check-item"><input type="checkbox" value="sale" checked> 상품 판매</label>
+              <label class="check-item"><input type="checkbox" value="refund" checked> 상품 환불</label>
+              <label class="check-item"><input type="checkbox" value="delivery" checked> 배송비</label>
+              <label class="check-item"><input type="checkbox" value="deliveryRefund" checked> 배송비 환불</label>
+              <label class="check-item"><input type="checkbox" value="adjustment" checked> 정산 보정</label>
+            </div>
+          </div>
+          <p class="hint" id="type-warn" style="color:var(--stamp);display:none;">정산유형을 하나 이상 선택해야 합니다.</p>
+        </fieldset>
+
+        <!-- ⑤ 저장: 업체별 교부용 XLSX 로컬 폴더 저장 -->
+        <fieldset class="group">
+          <legend>⑤ 저장 — 업체별 교부용 xlsx 로컬 폴더 저장</legend>
+          <p class="hint" style="margin-top:0;">현재 필터(정산년월·정산유형)로 업체별 xlsx 파일을 만들어, 저장창 없이 지정한 폴더에 바로 저장합니다. 정산년월이 한 달로 선택돼 있어야 실행할 수 있습니다.</p>
+
+          <div id="bulk-fs-unsupported" class="banner warn" hidden>
+            <span>⚠</span>
+            <span>Chrome 또는 Edge에서만 지원됩니다 (File System Access API 미지원 브라우저).</span>
+          </div>
+
+          <div class="field-row" style="margin-bottom:10px;">
+            <button class="btn" id="bulk-pick-dir-btn" type="button">저장 폴더 선택</button>
+            <span class="hint" style="margin-top:0;">현재 폴더: <strong id="bulk-dir-name">선택 안 됨</strong></span>
+            <button class="btn ghost" id="bulk-dir-permission-btn" type="button" hidden>폴더 접근 허용</button>
+          </div>
+
+          <button class="btn primary" id="btn-bulk-save" style="width:100%;">업체별 일괄 저장 (xlsx)</button>
+          <div class="btn-note">판매가·ITEM_ID·PARTNER_ID·업체명·정산년월 컬럼 제외 · 파일명 YYMM_업체명.xlsx · 동일 파일명 덮어씀</div>
+
+          <div class="run-log" id="bulk-save-log" style="margin-top:10px;"></div>
+          <div class="run-summary" id="bulk-save-summary"></div>
+        </fieldset>
+
+        <!-- ⑤ 저장: 내부 아카이빙용 로컬 폴더 저장 -->
+        <fieldset class="group danger">
+          <legend>⚠ ⑤ 저장 — 내부 아카이빙용 (판매가 포함) — 업체 전달 금지</legend>
+          <p class="hint" style="margin-top:0;">현재 필터(정산년월·정산유형)로 업체별 xlsx 파일을 만들어, 저장창 없이 지정한 폴더에 바로 저장합니다. <strong>판매가가 포함된 내부 보관용 파일입니다 — 업체에 전달하지 마세요.</strong> 정산년월이 한 달로 선택돼 있어야 실행할 수 있습니다.</p>
+
+          <div id="bulk-fs-archive-unsupported" class="banner warn" hidden>
+            <span>⚠</span>
+            <span>Chrome 또는 Edge에서만 지원됩니다 (File System Access API 미지원 브라우저).</span>
+          </div>
+
+          <div class="field-row" style="margin-bottom:10px;">
+            <button class="btn" id="bulk-pick-archive-dir-btn" type="button">내부용 저장 폴더 선택</button>
+            <span class="hint" style="margin-top:0;">현재 폴더: <strong id="bulk-archive-dir-name">선택 안 됨</strong></span>
+            <button class="btn ghost" id="bulk-archive-dir-permission-btn" type="button" hidden>폴더 접근 허용</button>
+          </div>
+
+          <button class="btn primary" id="btn-bulk-archive-save" style="width:100%;">내부용 일괄 저장 (xlsx)</button>
+          <div class="btn-note">ITEM_ID·PARTNER_ID·업체명·정산년월 컬럼 제외(판매가 포함) · 파일명 YYMM_업체명.xlsx · 동일 파일명 덮어씀</div>
+
+          <div class="run-log" id="bulk-archive-save-log" style="margin-top:10px;"></div>
+          <div class="run-summary" id="bulk-archive-save-summary"></div>
+        </fieldset>
       </section>
 
       <!-- ===================== PANEL: Google 시트 동기화 ===================== -->
@@ -973,21 +886,32 @@
     return Object.keys(unmatchedNames);
   }
 
+  // 정산 시트는 이제 n8n이 한 번에 한 정산년월 데이터만 채워 넣는다(정산대기 건만) —
+  // 그러므로 현재 적재된 데이터의 정산년월은 첫 행의 값을 그대로 보여주면 된다.
+  function currentSettlementPeriodLabel(){
+    if (!SETTLEMENT_ROWS.length || !SETTLEMENT_IDX) return '–';
+    return (SETTLEMENT_ROWS[0][SETTLEMENT_IDX.정산년월] || '').trim() || '–';
+  }
+
   function setSettlementSyncUi(state, detail){
     var statusEl = document.getElementById('settlement-sync-status');
+    var countEl = document.getElementById('settlement-count');
+    var periodEl = document.getElementById('settlement-period-label');
     var banner = document.getElementById('settlement-banner');
     var bannerText = document.getElementById('settlement-banner-text');
     var refreshBtn = document.getElementById('settlement-refresh-btn');
     refreshBtn.classList.toggle('spinning', state === 'loading');
     if (state === 'loading'){
-      statusEl.textContent = '정산 데이터 불러오는 중…';
+      statusEl.textContent = '불러오는 중…';
       banner.hidden = true;
     } else if (state === 'ok'){
       var now = new Date();
       var hh = now.getHours(), mm = now.getMinutes();
       var ampm = hh < 12 ? '오전' : '오후';
       var hh12 = hh % 12 || 12;
-      statusEl.textContent = '정산 데이터 ' + SETTLEMENT_ROWS.length + '건 · 마지막 갱신 ' + ampm + ' ' + hh12 + ':' + (mm < 10 ? '0' + mm : mm);
+      countEl.textContent = SETTLEMENT_ROWS.length.toLocaleString('ko-KR');
+      periodEl.textContent = '정산년월 ' + currentSettlementPeriodLabel();
+      statusEl.textContent = '마지막 갱신 ' + ampm + ' ' + hh12 + ':' + (mm < 10 ? '0' + mm : mm);
       var unmatched = findUnmatchedSettlementVendors();
       if (unmatched.length){
         banner.hidden = false;
@@ -997,7 +921,8 @@
         banner.hidden = true;
       }
     } else {
-      statusEl.textContent = '정산 데이터를 불러오지 못했습니다';
+      countEl.textContent = '–';
+      statusEl.textContent = '불러오지 못했습니다';
       banner.hidden = false;
       bannerText.textContent = detail || '정산 시트를 불러오지 못했습니다. 다시 불러오기를 눌러 재시도해 주세요.';
     }
@@ -1031,6 +956,182 @@
     refreshSettlementSheet();
     // 페이지를 오래 열어두는 경우를 대비해 5분마다 자동으로 다시 확인.
     setInterval(refreshSettlementSheet, 5 * 60 * 1000);
+  }
+
+  /* =================================================================
+     데이터 불러오기 — n8n 웹훅으로 정산 데이터 시트를 특정 정산년월로 다시 채운다.
+     시트를 비우고 다시 채우는 데 약 20분이 걸리므로, 진행 중에는 이 버튼과
+     로컬 저장 버튼을 모두 잠그고 30초마다 상태를 확인한다(40분 넘으면 확인 필요로 전환).
+  ================================================================= */
+  var N8N_LOAD_URL = 'https://n8n.miridih.com/webhook/settlement-load';
+  var N8N_STATUS_URL = 'https://n8n.miridih.com/webhook/settlement-status';
+  var LOAD_POLL_INTERVAL_MS = 30 * 1000;
+  var LOAD_TIMEOUT_MS = 40 * 60 * 1000;
+
+  var loadState = { inProgress: false, timedOut: false, startedAt: null, requester: '', period: '' };
+  var loadPollTimer = null;
+
+  function trimField(v){ return (v == null ? '' : String(v)).trim(); }
+
+  function setLoadStatusText(text){
+    document.getElementById('load-status-text').textContent = text || '';
+  }
+
+  function currentSelectedPeriod(){
+    return yearSelect.value + '-' + pad(monthSelect.value);
+  }
+
+  function formatHm(date){
+    var hh = date.getHours(), mm = date.getMinutes();
+    var ampm = hh < 12 ? '오전' : '오후';
+    var hh12 = hh % 12 || 12;
+    return ampm + ' ' + hh12 + ':' + (mm < 10 ? '0' + mm : mm);
+  }
+  function formatMdHm(date){
+    return pad(date.getMonth() + 1) + '/' + pad(date.getDate()) + ' ' + formatHm(date);
+  }
+  function formatMdHmFromRaw(raw){
+    var d = parseDateLoose(raw);
+    return d ? formatMdHm(d) : raw;
+  }
+
+  // 데이터 불러오기 버튼을 켜고 끈다. updateBulkReadyState()도 loadState.inProgress를
+  // 함께 확인하므로, 로컬 저장 버튼은 이 함수를 따로 부르지 않아도 같이 잠긴다.
+  function setLoadInProgressUi(inProgress){
+    document.getElementById('btn-load-data').disabled = inProgress;
+    updateBulkReadyState();
+  }
+
+  function stopLoadPolling(){
+    if (loadPollTimer){ clearInterval(loadPollTimer); loadPollTimer = null; }
+  }
+  function startLoadPolling(){
+    stopLoadPolling();
+    loadPollTimer = setInterval(pollLoadStatus, LOAD_POLL_INTERVAL_MS);
+  }
+
+  function enterProgressState(requester, period, startedAt){
+    loadState.inProgress = true;
+    loadState.timedOut = false;
+    loadState.requester = requester;
+    loadState.period = period;
+    loadState.startedAt = startedAt;
+    setLoadInProgressUi(true);
+    setLoadStatusText(requester + ' 불러오는 중 (' + formatHm(startedAt) + ' 시작) · ' + period);
+    startLoadPolling();
+  }
+
+  function enterTimedOutState(){
+    loadState.inProgress = false;
+    loadState.timedOut = true;
+    stopLoadPolling();
+    setLoadInProgressUi(false);
+    setLoadStatusText('⚠️ 확인 필요 — ' + (loadState.requester || '알 수 없음') + '님이 ' +
+      (loadState.startedAt ? formatHm(loadState.startedAt) + '에 ' : '') + '시작한 불러오기가 40분을 넘었습니다. 직접 시트 상태를 확인해 주세요.');
+  }
+
+  // 정산 상태 API를 한 번 확인한다 — 불러오기를 막 시작했을 때, 30초 폴링 중,
+  // 그리고 페이지를 새로 열었을 때(다른 사람이 이미 돌리고 있을 수 있어) 모두 이 함수를 쓴다.
+  // 상태값은 "대기"(아무도 돌리고 있지 않음) / "진행중" / "완료" 세 가지뿐이다 — "대기"를
+  // "진행중"으로 착각해 화면을 잠그지 않도록 status 값별로 분기를 명확히 나눈다.
+  function pollLoadStatus(){
+    return fetch(N8N_STATUS_URL, { cache: 'no-store' })
+      .then(function(res){
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data){
+        var status = trimField(data && data['상태']);
+        var requester = trimField(data && data['요청자']) || loadState.requester;
+        var period = trimField(data && data['정산년월']) || loadState.period;
+        var startedRaw = trimField(data && data['시작시각']);
+        var doneRaw = trimField(data && data['완료시각']);
+        var startedAt = startedRaw ? (parseDateLoose(startedRaw) || loadState.startedAt) : loadState.startedAt;
+
+        if (status === '진행중'){
+          if (startedAt && (Date.now() - startedAt.getTime()) > LOAD_TIMEOUT_MS){
+            loadState.requester = requester;
+            loadState.period = period;
+            loadState.startedAt = startedAt;
+            enterTimedOutState();
+            return;
+          }
+          if (!loadState.inProgress || loadState.timedOut){
+            enterProgressState(requester, period, startedAt || new Date());
+          } else {
+            loadState.requester = requester;
+            loadState.period = period;
+            if (startedAt) loadState.startedAt = startedAt;
+            setLoadStatusText(requester + ' 불러오는 중' + (startedAt ? ' (' + formatHm(startedAt) + ' 시작)' : '') + ' · ' + period);
+          }
+          return;
+        }
+
+        if (status === '완료'){
+          var wasTrackingThis = loadState.inProgress || loadState.timedOut; // 우리가 지켜보던 작업이 막 끝난 경우에만 알림·재조회
+          stopLoadPolling();
+          loadState.inProgress = false;
+          loadState.timedOut = false;
+          setLoadInProgressUi(false);
+          if (wasTrackingThis){
+            var doneLabel = doneRaw ? formatMdHmFromRaw(doneRaw) : '';
+            setLoadStatusText('✅ ' + (period || currentSelectedPeriod()) + ' 불러오기 완료' + (doneLabel ? ' (' + doneLabel + ')' : ''));
+            refreshSettlementSheet();
+          }
+          return;
+        }
+
+        // status === '대기'(또는 알 수 없는 값) — 아무도 돌리고 있지 않다. 지켜보던 중이었다면 정리한다.
+        if (loadState.inProgress || loadState.timedOut){
+          stopLoadPolling();
+          loadState.inProgress = false;
+          loadState.timedOut = false;
+          setLoadInProgressUi(false);
+        }
+      })
+      .catch(function(){
+        // 상태 조회 한 번 실패한 건 조용히 넘어간다 — 다음 폴링에서 다시 시도한다(폴링 자체는 멈추지 않음).
+      });
+  }
+
+  function requestSettlementLoad(){
+    if (loadState.inProgress) return;
+    var period = currentSelectedPeriod();
+    var requester = document.getElementById('load-requester').value;
+    var ok = window.confirm('정산 데이터 시트를 비우고 ' + period + ' 데이터를 다시 불러옵니다. 약 20분 걸리며 그동안 저장하면 데이터가 불완전합니다. 진행할까요?');
+    if (!ok) return;
+
+    setLoadStatusText('요청 보내는 중…');
+    var url = N8N_LOAD_URL + '?period=' + encodeURIComponent(period) + '&requester=' + encodeURIComponent(requester);
+    fetch(url, { cache: 'no-store' })
+      .then(function(res){
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data){
+        if (data && data.ok === true){
+          enterProgressState(requester, period, new Date());
+          // 시작 직후에는 서버가 아직 시작시각을 기록 못 했을 수 있어, 바로 한 번 더 상태를 맞춰본다.
+          pollLoadStatus();
+        } else if (data && data.ok === false && data.reason === 'running'){
+          var startedAt = parseDateLoose(trimField(data['시작시각'])) || new Date();
+          enterProgressState(trimField(data['요청자']) || requester, trimField(data['정산년월']) || period, startedAt);
+        } else if (data && data.reason === 'invalid_period'){
+          setLoadStatusText('잘못된 정산년월입니다 (' + period + ').');
+        } else {
+          setLoadStatusText('불러오기 요청이 거부되었습니다.');
+        }
+      })
+      .catch(function(err){
+        setLoadStatusText('불러오기 요청 실패 (' + (err && err.message ? err.message : '네트워크 오류') + ') — 잠시 후 다시 시도해 주세요.');
+      });
+  }
+
+  function initSettlementLoad(){
+    document.getElementById('btn-load-data').addEventListener('click', requestSettlementLoad);
+    // 페이지를 새로 열었을 때 다른 사람이 이미 불러오기를 돌리고 있을 수 있어 한 번 확인한다.
+    // 실패해도(네트워크/CORS 등) 조용히 무시한다 — 있으면 좋은 정도의 복구 동작이다.
+    pollLoadStatus();
   }
 
   /* =================================================================
@@ -1123,26 +1224,10 @@
     return Array.prototype.slice.call(document.querySelectorAll('#type-checks input:checked')).map(function(cb){ return cb.value; });
   }
 
-  var adjToggle = document.getElementById('adj-window-toggle');
-  var adjDays = document.getElementById('adj-window-days');
-  function syncAdjDaysState(){ adjDays.disabled = !adjToggle.checked; }
-  syncAdjDaysState();
-
   function buildConditions(){
     var types = getSelectedTypes();
-    var unit = document.querySelector('input[name="unit"]:checked').value === 'order' ? '주문단위' : '정산묶음단위';
-    var statusSelect = document.getElementById('status-select');
-    var statusVal = statusSelect.value; // 'all' 또는 시트의 실제 상태값(정산대기/묶음완료/지급완료)
-    var statusLabel = statusSelect.options[statusSelect.selectedIndex].text;
     var typesLabel = types.length ? types.map(function(t){ return typeLabels[t]; }).join(', ') : '(선택 없음)';
-    var adjEnabled = adjToggle.checked;
-    var adjDaysVal = Number(adjDays.value || 0);
-    return {
-      year: yearSelect.value, month: monthSelect.value, unit: unit,
-      statusVal: statusVal, status: statusLabel, types: types, typesLabel: typesLabel,
-      adjEnabled: adjEnabled, adjDays: adjDaysVal,
-      adjLine: adjEnabled ? ('+' + adjDaysVal + '일 포함') : '미포함'
-    };
+    return { year: yearSelect.value, month: monthSelect.value, types: types, typesLabel: typesLabel };
   }
 
   function pad(n){ return String(n).length < 2 ? '0' + n : String(n); }
@@ -1154,52 +1239,36 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // year/month(둘 다 1-based, 사람이 읽는 값) 기준 그 달의 마지막 날 23:59:59.999
-  function periodEndDate(year, month){
-    return new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
-  }
-
-  // 이 정산 라인아이템 한 줄이 선택된 정산기간에 해당하는지 판단한다.
-  // - 기본: 정산년월(YYYY-MM)이 선택된 연/월과 일치하면 포함.
-  // - 정산유형이 "정산 보정"이고 "보정건 추가조회"가 켜져 있으면, 정산년월이 달라도
-  //   정산기준시각이 [조회기간 종료일, 종료일+N일] 사이면 추가로 포함한다.
-  function rowMatchesPeriod(ym, type, settleAtRaw, orderDateRaw, cond){
-    var wanted = cond.year + '-' + pad(cond.month);
-    if (ym === wanted) return true;
-    if (type === typeLabels.adjustment && cond.adjEnabled){
-      var d = parseDateLoose(settleAtRaw) || parseDateLoose(orderDateRaw);
-      if (!d) return false;
-      var end = periodEndDate(cond.year, cond.month);
-      var windowEnd = new Date(end.getTime());
-      windowEnd.setDate(windowEnd.getDate() + cond.adjDays);
-      return d.getTime() > end.getTime() && d.getTime() <= windowEnd.getTime();
-    }
-    return false;
+  // 정산 시트는 이제 정산대기 건만, 해당 월 기준으로 한 번에 한 정산년월만 담고 있고
+  // 보정건(다음 달 1~15일분 포함)도 n8n이 적재 시점에 이미 반영해 둔다 —
+  // 그래서 이 콘솔은 더 이상 보정건 확장조회 기간을 계산하지 않고, 정산년월이
+  // 선택된 연/월과 정확히 일치하는 행만 그대로 고른다.
+  function rowMatchesPeriod(ym, cond){
+    return ym === (cond.year + '-' + pad(cond.month));
   }
 
   // 선택된 업체(PARTNER_ID) + 조건에 맞는 정산 라인아이템 원본 행(컬럼 순서 그대로)만 골라낸다.
+  // 시트에는 정산대기 건만 적재되므로 상태 필터는 따로 두지 않는다.
   function filterSettlementRows(vendor, cond){
     if (!settlementLoaded || !SETTLEMENT_IDX) return [];
     var idx = SETTLEMENT_IDX;
     var wantedTypes = cond.types.map(function(t){ return typeLabels[t]; });
     return SETTLEMENT_ROWS.filter(function(r){
       if ((r[idx.PARTNER_ID] || '').trim() !== vendor.partnerId) return false;
-      var status = (r[idx.상태] || '').trim();
-      if (cond.statusVal !== 'all' && status !== cond.statusVal) return false;
       var type = (r[idx.정산유형] || '').trim();
       if (wantedTypes.indexOf(type) === -1) return false;
       var ym = (r[idx.정산년월] || '').trim();
-      return rowMatchesPeriod(ym, type, r[idx.정산기준시각], r[idx.주문생성일], cond);
+      return rowMatchesPeriod(ym, cond);
     });
   }
 
   // VAT포함은 다운로드 파일에 절대 노출하지 않는다(업체 교부용/내부 아카이빙용 모두) — 정산 계산에만 내부적으로 쓴다.
   // 시트에 "vat포함"(소문자, 값이 항상 비어있는 중복 컬럼)이 남아있는 것도 확인해 함께 제외한다 —
   // 실제 값이 들어있는 컬럼은 대문자 "VAT포함" 쪽이다(컬럼 매칭은 대소문자를 구분하므로 둘 다 명시).
+  // 'vendor'/'archive' 종류는 예전 상단 일괄 다운로드 버튼용이었으나 그 버튼들을 없애면서
+  // 함께 정리했다 — 지금은 로컬 폴더 저장용인 'bulk'/'bulkArchive'만 쓴다.
   var SETTLEMENT_EXCLUDE_COLS = {
-    vendor: ['판매가', 'ITEM_ID', 'PARTNER_ID', 'VAT포함', 'vat포함'],   // 업체 교부용: 판매가 + 내부 식별자 제외
-    archive: ['ITEM_ID', 'PARTNER_ID', 'VAT포함', 'vat포함'],             // 내부 아카이빙용: 내부 식별자만 제외(판매가 포함)
-    // 업체별 로컬 폴더 일괄 저장용(교부용): 업체 교부용 규칙 + 파일명에 이미 담기는 업체명/정산년월도 제외
+    // 업체별 로컬 폴더 일괄 저장용(교부용): 판매가 + 내부 식별자 + 파일명에 이미 담기는 업체명/정산년월 제외
     bulk: ['판매가', 'ITEM_ID', 'PARTNER_ID', '업체명', '정산년월', 'VAT포함', 'vat포함'],
     // 업체별 로컬 폴더 일괄 저장용(내부 아카이빙용): 내부 식별자 + 업체명/정산년월만 제외(판매가 포함)
     bulkArchive: ['ITEM_ID', 'PARTNER_ID', '업체명', '정산년월', 'VAT포함', 'vat포함']
@@ -1220,122 +1289,27 @@
     return { header: header, rows: rows, matchedCount: matched.length };
   }
 
-  function rowsToCsvText(rows){
-    return rows.map(function(r){
-      return r.map(function(cell){
-        var s = String(cell == null ? '' : cell);
-        if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
-        return s;
-      }).join(',');
-    }).join('\r\n');
-  }
-
-  function getFileFormat(){
-    var el = document.querySelector('input[name="fileFormat"]:checked');
-    return el ? el.value : 'csv';
-  }
-
   function sanitizeForFilename(s){
     return String(s).replace(/[\\/:*?"<>|]/g, '').trim();
   }
 
-  function filenameFor(vendor, cond, kind, ext){
-    var yy = String(cond.year).slice(-2);
-    var yymm = yy + pad(cond.month);
-    var name = sanitizeForFilename(vendor.name);
-    var suffix = kind === 'archive' ? '_아카이브' : '';
-    return yymm + '_' + name + suffix + '.' + ext;
-  }
-
+  // 업체 목록/기간/정산유형이 바뀔 때마다 경고 문구와 로컬 저장 버튼의 활성화 상태를 갱신한다.
+  // (업체별 다운로드 요약 카드·미리보기·상단 일괄 다운로드는 삭제됨 — 로컬 폴더 저장만 남는다.)
   function updateSummary(){
     var cond = buildConditions();
-    var sel = selectedVendors();
-    var mgrLabel = execMgrFilter.value === 'all' ? '전체' : execMgrFilter.value;
-    document.getElementById('sum-manager').textContent = mgrLabel;
-    document.getElementById('sum-vendor-count').textContent = sel.length + '곳';
-    document.getElementById('sum-period').textContent = cond.year + '년 ' + cond.month + '월';
-    document.getElementById('sum-types').textContent = cond.typesLabel;
-    document.getElementById('sum-status').textContent = cond.status;
-
     var typeWarn = document.getElementById('type-warn');
     typeWarn.style.display = cond.types.length ? 'none' : 'block';
-
-    var ready = sel.length > 0 && cond.types.length > 0 && settlementLoaded;
-    document.getElementById('btn-batch-vendor').disabled = !ready;
-    document.getElementById('btn-batch-archive').disabled = !ready;
-
-    var ext = getFileFormat();
-    if (sel.length){
-      document.getElementById('sum-filename').textContent = filenameFor(sel[0], cond, 'vendor', ext);
-      if (settlementLoaded){
-        var table = buildSettlementTable(sel[0], cond, 'vendor');
-        var previewRows = [table.header].concat(table.rows.slice(0, 8));
-        var text = rowsToCsvText(previewRows);
-        if (table.rows.length > 8) text += '\r\n… (총 ' + table.rows.length + '건 중 8건만 표시)';
-        else if (!table.rows.length) text = '(조건에 맞는 정산 내역이 없습니다)\r\n\r\n' + rowsToCsvText([table.header]);
-        document.getElementById('receipt-text').textContent = text;
-      } else {
-        document.getElementById('receipt-text').textContent = '정산 데이터를 불러오는 중이거나 불러오지 못했습니다.';
-      }
-    } else {
-      document.getElementById('sum-filename').textContent = '–';
-      document.getElementById('receipt-text').textContent = '';
-    }
-
     updateBulkReadyState();
   }
 
   document.getElementById('type-checks').addEventListener('change', updateSummary);
-  document.getElementById('status-select').addEventListener('change', updateSummary);
-  document.getElementById('period-unit').addEventListener('change', updateSummary);
-  document.getElementById('file-format-group').addEventListener('change', updateSummary);
   yearSelect.addEventListener('change', updateSummary);
   monthSelect.addEventListener('change', updateSummary);
-  adjToggle.addEventListener('change', function(){ syncAdjDaysState(); updateSummary(); });
-  adjDays.addEventListener('input', updateSummary);
-
-  document.getElementById('btn-preview-toggle').addEventListener('click', function(){
-    var box = document.getElementById('receipt-box');
-    box.hidden = !box.hidden;
-    this.textContent = box.hidden ? '예시 파일 미리보기' : '예시 미리보기 닫기';
-  });
-
-  /* =================================================================
-     PANEL: 정산 실행 — 일괄 다운로드 실행
-  ================================================================= */
-  function appendLogRow(no, name, state, text){
-    var log = document.getElementById('run-log');
-    var row = document.createElement('div');
-    row.className = 'run-log-row ' + state;
-    row.setAttribute('data-no', no);
-    row.innerHTML = '<span class="name">' + escapeHtml(name) + '</span><span class="state">' + escapeHtml(text) + '</span>';
-    log.appendChild(row);
-    log.scrollTop = log.scrollHeight;
-  }
-  function updateLogRow(no, state, text){
-    var row = document.querySelector('.run-log-row[data-no="' + no + '"]');
-    if (!row) return;
-    row.className = 'run-log-row ' + state;
-    row.querySelector('.state').textContent = text;
-  }
-
-  function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
-
-  function saveBlob(filename, blob){
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-  }
 
   // XLSX는 실제 엑셀 바이너리를 만들어야 해서 SheetJS 계열 라이브러리가 필요하다.
   // 무료판 SheetJS(xlsx.full.min.js)는 셀 스타일(wrapText 등) 저장을 지원하지 않아,
   // 같은 API를 그대로 쓰면서 스타일 저장(xf.alignment.wrapText 등)만 추가 지원하는
-  // xlsx-js-style(SheetJS의 커뮤니티 포크)을 대신 사용한다 — 기존 CSV/XLSX 다운로드 코드는 그대로 동작한다.
+  // xlsx-js-style(SheetJS의 커뮤니티 포크)을 대신 사용한다.
   // 처음 XLSX를 요청할 때만 CDN에서 불러오고(네트워크 필요), 이후로는 캐시된 걸 재사용한다.
   var _xlsxLibPromise = null;
   function loadXlsxLib(){
@@ -1350,87 +1324,6 @@
     });
     return _xlsxLibPromise;
   }
-
-  async function triggerDownloadRows(filename, rows, format){
-    try {
-      if (format === 'xlsx'){
-        var XLSX = await loadXlsxLib();
-        var ws = XLSX.utils.aoa_to_sheet(rows);
-        var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '정산내역');
-        var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        saveBlob(filename, new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-      } else {
-        saveBlob(filename, new Blob(['﻿' + rowsToCsvText(rows)], { type: 'text/csv;charset=utf-8' }));
-      }
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: (err && err.message) || '알 수 없는 오류' };
-    }
-  }
-
-  async function runBatch(kind){
-    var cond = buildConditions();
-    var vendors = selectedVendors();
-    var format = getFileFormat();
-    var btnVendor = document.getElementById('btn-batch-vendor');
-    var btnArchive = document.getElementById('btn-batch-archive');
-    var log = document.getElementById('run-log');
-    var summaryEl = document.getElementById('run-summary');
-    log.innerHTML = '';
-    summaryEl.textContent = '';
-
-    if (!settlementLoaded){
-      summaryEl.textContent = '정산 데이터를 아직 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.';
-      return;
-    }
-    if (!vendors.length || !cond.types.length){
-      summaryEl.textContent = '선택된 업체 또는 정산유형이 없습니다.';
-      return;
-    }
-
-    btnVendor.disabled = true;
-    btnArchive.disabled = true;
-
-    var okCount = 0, failCount = 0, emptyCount = 0;
-
-    for (var i = 0; i < vendors.length; i++){
-      var v = vendors[i];
-      appendLogRow(v.no, v.name, 'pending', format === 'xlsx' && i === 0 ? '변환 라이브러리 로딩 중…' : '저장 중…');
-      var table = buildSettlementTable(v, cond, kind);
-      var rows = [table.header].concat(table.rows);
-      var filename = filenameFor(v, cond, kind, format);
-      var result = await triggerDownloadRows(filename, rows, format);
-      if (result.ok){
-        okCount++;
-        if (!table.matchedCount) emptyCount++;
-        updateLogRow(v.no, table.matchedCount ? 'ok' : 'skip', '저장됨 · ' + table.matchedCount + '건');
-      } else {
-        failCount++;
-        updateLogRow(v.no, 'error', '오류 (' + result.message + ')');
-        if (format === 'xlsx' && !window.XLSX){
-          // 라이브러리 로딩 자체가 실패한 경우, 나머지 업체를 계속 시도해도 똑같이 실패할 뿐이므로 중단.
-          summaryEl.textContent = 'XLSX 변환 라이브러리 로딩 실패로 중단됨 — CSV로 다시 시도해 주세요.';
-          btnVendor.disabled = false;
-          btnArchive.disabled = false;
-          updateSummary();
-          return;
-        }
-      }
-      // 브라우저가 "여러 파일 자동 다운로드"로 한꺼번에 막지 않도록 파일 사이에 짧게 간격을 둔다.
-      await sleep(250);
-    }
-
-    summaryEl.textContent = '완료 — 총 ' + vendors.length + '곳 중 저장 ' + okCount + ' · 실패 ' + failCount +
-      (emptyCount ? ' · 조건에 맞는 내역 없음 ' + emptyCount + '곳' : '') +
-      (failCount ? '' : ' · 브라우저가 "여러 파일 다운로드"를 처음 물어봤다면 허용해 주세요.');
-    btnVendor.disabled = false;
-    btnArchive.disabled = false;
-    updateSummary();
-  }
-
-  document.getElementById('btn-batch-vendor').addEventListener('click', function(){ runBatch('vendor'); });
-  document.getElementById('btn-batch-archive').addEventListener('click', function(){ runBatch('archive'); });
 
   /* =================================================================
      업체별 xlsx 로컬 폴더 일괄 저장 (File System Access API)
@@ -1528,8 +1421,10 @@
     var vendors = selectedVendors();
     // 연/월 select는 항상 정확히 하나의 값만 가지지만, 요구사항대로 "한 달만 선택"됨을 명시적으로 검사한다.
     var singleMonthSelected = !!cond.year && !!cond.month;
+    // 데이터 불러오기가 진행 중일 때는(시트가 비워지고 다시 채워지는 중이라) 저장 버튼도 잠근다.
+    var loadInProgress = typeof loadState !== 'undefined' && loadState.inProgress;
     [BULK_TARGETS.vendor, BULK_TARGETS.archive].forEach(function(target){
-      var ready = fsApiSupported() && !!target.dirHandle && settlementLoaded &&
+      var ready = fsApiSupported() && !!target.dirHandle && settlementLoaded && !loadInProgress &&
         singleMonthSelected && cond.types.length > 0 && vendors.length > 0;
       document.getElementById(target.els.saveBtn).disabled = !ready;
     });
@@ -1699,15 +1594,41 @@
     return isNaN(n) ? raw : n; // 파싱 실패 시 원본을 그대로 보존(방어적)
   }
 
+  // 정산기준시각(시트 원본은 UTC ISO, 예: "2026-09-01T12:00:30.271Z")을 KST로 변환해
+  // "2026. 09. 01. 21:00:30" 형식으로 표기한다.
+  function formatKstFromUtcIso(raw){
+    if (!raw) return raw;
+    var d = parseDateLoose(raw); // 'Z' 접미사가 있으므로 UTC 인스턴트로 정확히 파싱된다
+    if (!d) return raw;
+    var kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    return kst.getUTCFullYear() + '. ' + pad(kst.getUTCMonth() + 1) + '. ' + pad(kst.getUTCDate()) + '. ' +
+      pad(kst.getUTCHours()) + ':' + pad(kst.getUTCMinutes()) + ':' + pad(kst.getUTCSeconds());
+  }
+
+  // 주문생성일(시트 원본이 이미 시간대 표기 없는 KST 벽시계 값, 예: "2026-08-21T13:50:10.000"
+  // 또는 "2026-08-21 13:50:10")은 변환 없이 표기만 "2026. 08. 21. 13:50:10" 형식으로 바꾼다.
+  // Date 객체로 다시 파싱하면 실행 환경(브라우저)의 로컬 시간대에 영향을 받을 수 있어,
+  // 문자열을 정규식으로 직접 나눠 조립한다.
+  function formatKstWallClock(raw){
+    if (!raw) return raw;
+    var m = String(raw).trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2}):(\d{2})/);
+    if (!m) return raw;
+    return m[1] + '. ' + m[2] + '. ' + m[3] + '. ' + pad(Number(m[4])) + ':' + m[5] + ':' + m[6];
+  }
+
   function projectItemListForDisplay(table){
     var numericIdx = {};
     table.header.forEach(function(h, i){ if (ITEM_NUMERIC_COLUMNS.indexOf(h) !== -1) numericIdx[i] = true; });
     var statusIdx = table.header.indexOf('상태');
+    var orderDateIdx = table.header.indexOf('주문생성일');
+    var settleAtIdx = table.header.indexOf('정산기준시각');
 
     var rows = table.rows.map(function(r){
       return r.map(function(v, i){
         if (numericIdx[i]) return parseAmountOrBlank(v);
         if (i === statusIdx) return STATUS_DISPLAY_MAP[v] || v;
+        if (i === orderDateIdx) return formatKstWallClock(v);
+        if (i === settleAtIdx) return formatKstFromUtcIso(v);
         return v;
       });
     });
@@ -1773,10 +1694,13 @@
   // #,##0 서식을 적용한다.
   function applyWorkbookStyles(XLSX, ws, meta){
     if (meta.optionColIndex !== -1){
-      var lastMoneyCol = meta.summaryMoneyCols[meta.summaryMoneyCols.length - 1];
-      var colCount = Math.max(meta.optionColIndex + 1, lastMoneyCol + 1);
+      // 주의: 여기서 모든 컬럼 인덱스에 {}(빈 객체)를 채워 넣으면 안 된다 — SheetJS/xlsx-js-style이
+      // width 없는 <col> 태그를 그대로 써버려서, 엑셀이 그 컬럼들을 폭 0(=숨김과 동일하게 보임)으로
+      // 그린다. 실제로 이 버그 때문에 A~J열이 숨겨지고 K열부터 보이는 문제가 있었다.
+      // 고치는 법: 지정할 컬럼 인덱스만 채운 성긴(sparse) 배열을 쓴다 — 나머지 인덱스는 진짜 빈
+      // 자리(hole)로 남아, 그 컬럼에는 아예 <col> 태그가 안 써지고 엑셀 기본 폭 그대로 보인다.
       var cols = [];
-      for (var i = 0; i < colCount; i++) cols.push(i === meta.optionColIndex ? { wch: 40 } : {});
+      cols[meta.optionColIndex] = { wch: 40 };
       ws['!cols'] = cols;
       for (var r = meta.itemHeaderRowIndex; r < meta.itemDataStartRow + meta.itemDataRowCount; r++){
         var addr = XLSX.utils.encode_cell({ r: r, c: meta.optionColIndex });
@@ -2059,6 +1983,7 @@
   refreshVendorChecklist();
   initManagerSheetSync();
   initSettlementSheetSync();
+  initSettlementLoad();
   tryRestoreSavedDirectory(BULK_TARGETS.vendor);
   tryRestoreSavedDirectory(BULK_TARGETS.archive);
   window.__settlementSummarySelfTest = runSettlementSummarySelfTest();
