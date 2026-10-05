@@ -156,6 +156,7 @@
   .page-head p{color:var(--text-muted);font-size:12.5px;margin:0;}
 
   .panel[hidden]{display:none;}
+  .banner[hidden]{display:none;}
 
   /* ---------- generic card ---------- */
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);}
@@ -318,6 +319,33 @@
     color:var(--warning);background:var(--warning-soft);padding:5px 12px;border-radius:100px;
   }
 
+
+  /* ---------- 정산시트 기입 탭 ---------- */
+  .fill-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  @media (max-width:980px){ .fill-grid{grid-template-columns:1fr;} }
+  .fill-card h2{font-family:var(--font-display);font-size:16px;margin:0 0 4px;}
+  .fill-card .sub{font-size:12px;color:var(--text-muted);margin-bottom:12px;}
+  .fill-steps{margin:0 0 12px;padding:12px 14px 12px 32px;background:var(--surface-alt);border:1px solid var(--border);border-radius:9px;font-size:13px;line-height:1.75;}
+  .fill-steps b{font-family:var(--font-mono);color:var(--accent-strong);}
+  .fill-steps kbd{font-family:var(--font-mono);font-size:11.5px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--surface);}
+  .fill-range{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .fill-range .cell{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent);line-height:1;}
+  .fill-range .meta{font-size:12px;color:var(--text-muted);}
+  .fill-check{font-size:12px;color:var(--text-muted);margin:8px 0 0;}
+  .fill-check b{color:var(--text);}
+  .fill-empty{font-size:13px;color:var(--text-faint);padding:18px 0;text-align:center;}
+  .fill-diff{margin-top:10px;}
+  .fill-diff summary,.fill-preview summary{cursor:pointer;font-size:12.5px;font-weight:600;}
+  .fill-preview{margin-top:10px;}
+  .fill-preview .table-wrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:9px;margin-top:8px;}
+  table.fill{width:100%;border-collapse:collapse;font-size:12px;}
+  table.fill th{text-align:left;font-size:11px;color:var(--text-faint);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--border-strong);position:sticky;top:0;background:var(--surface);white-space:nowrap;}
+  table.fill td{padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  table.fill td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+  table.fill tr.diff td{background:var(--warning-soft);}
+  table.fill td.rowno{font-family:var(--font-mono);color:var(--text-faint);}
+  .copy-done{font-size:12px;color:var(--success);font-weight:600;margin-left:8px;}
+
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 
   @media (prefers-reduced-motion:no-preference){
@@ -366,8 +394,7 @@
       </button>
       <button class="nav-item" data-panel="sheets" aria-current="false" type="button">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5"/></svg>
-        <span class="nav-label">Google 시트 동기화</span>
-        <span class="nav-badge">준비중</span>
+        <span class="nav-label">정산시트 기입</span>
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -438,7 +465,7 @@
       <section id="panel-exec" class="panel" hidden>
         <div class="page-head">
           <h1>정산 실행</h1>
-          <p>정산 데이터가 게시된 구글시트(CSV)를 읽어와, 조건에 맞는 실제 정산 내역을 업체별 xlsx 파일로 저장합니다. 이 화면에서는 데이터를 수정할 수 없습니다.</p>
+          <p>정산 데이터 구글시트를 n8n을 거쳐 읽어와(사내망에서만 동작), 조건에 맞는 실제 정산 내역을 업체별 xlsx 파일로 저장합니다. 이 화면에서는 데이터를 수정할 수 없습니다.</p>
         </div>
 
         <!-- ① 정산 데이터 -->
@@ -577,20 +604,45 @@
         </fieldset>
       </section>
 
-      <!-- ===================== PANEL: Google 시트 동기화 ===================== -->
+      <!-- ===================== PANEL: 정산시트 기입 ===================== -->
       <section id="panel-sheets" class="panel" hidden>
         <div class="page-head">
-          <h1>Google 시트 동기화</h1>
-          <p>정산 실행 결과를 정산현황 시트·채산 시트에 자동으로 반영하는 화면입니다.</p>
+          <h1>정산시트 기입</h1>
+          <p>정산현황 시트 N열(정산액 VAT포함)과 외주사 정산 시트의 월별 정산·매출 칸에 붙여넣을 값을 만듭니다. 시트의 지금 행 순서를 그대로 읽어 그 순서대로 만들기 때문에, 안내된 셀에 그대로 붙여넣으면 됩니다. 시트에는 아무것도 쓰지 않습니다.</p>
         </div>
-        <div class="card placeholder-card">
-          <div class="placeholder-icon">
-            <svg class="icon" style="width:26px;height:26px;" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5"/></svg>
+
+        <div class="card card-pad" style="margin-bottom:14px;">
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label" for="fill-year">정산년월</label>
+              <div style="display:flex;gap:6px;">
+                <select class="ctl" id="fill-year"></select>
+                <select class="ctl" id="fill-month"></select>
+              </div>
+            </div>
+            <label class="check-item" style="align-self:flex-end;margin-bottom:8px;" title="체크하면 이미 숫자가 들어있는 칸은 시트 값을 그대로 둡니다. 보정 후 다시 뽑을 때는 해제하세요.">
+              <input type="checkbox" id="fill-keep"> 이미 입력된 칸은 그대로 두기
+            </label>
+            <button class="btn primary" id="btn-fill-load" type="button" style="align-self:flex-end;">자료 불러오기</button>
           </div>
-          <h2>아직 연결되지 않았습니다</h2>
-          <p>Google Sheets API 연동은 현재 후순위로 미뤄진 상태입니다. 연동이 확정되면 이 화면에서 시트·탭을 선택하고, 정산 실행 결과를 자동으로 반영할 수 있게 됩니다.</p>
-          <p>지금은 "정산 실행" 화면에서 받은 다운로드 요청서를 정산AX 담당자에게 전달해 진행해 주세요.</p>
-          <span class="placeholder-status">● 준비 중</span>
+          <div class="hint" id="fill-status" style="margin-top:10px;">정산년월을 고르고 [자료 불러오기]를 누르세요. 약 10~30초 걸립니다.</div>
+          <div class="hint">정산 대기 업체 값은 다음 달 1~15일 보정 입력이 끝나기 전까지 바뀔 수 있습니다. 보정 마감 후 한 번 더 불러와 붙여넣으세요.</div>
+          <div id="fill-banner" class="banner warn" style="display:none;margin-top:10px;margin-bottom:0;">
+            <span>⚠</span><span id="fill-banner-text"></span>
+          </div>
+        </div>
+
+        <div class="fill-grid">
+          <div class="card card-pad fill-card" id="fill-jh">
+            <h2>정산현황 시트</h2>
+            <div class="sub">정산액(VAT포함) 1열</div>
+            <div class="fill-empty">아직 불러오지 않았습니다.</div>
+          </div>
+          <div class="card card-pad fill-card" id="fill-ws">
+            <h2>외주사 정산 시트</h2>
+            <div class="sub">월 정산 · 월 매출 2열</div>
+            <div class="fill-empty">아직 불러오지 않았습니다.</div>
+          </div>
         </div>
       </section>
 
@@ -733,16 +785,17 @@
   });
 
   /* =================================================================
-     담당자 배정 — 구글시트(웹에 게시된 CSV) 읽기 전용 동기화
+     담당자 배정 / 정산 데이터 — n8n(사내망 전용)을 거쳐 구글시트를 읽는다
   ================================================================= */
-  // "정산 AX - 담당자 배정" 시트를 파일 → 공유 → 웹에 게시로 내보낸 CSV 링크.
-  // 담당자 변경은 이 콘솔이 아니라 저 시트에서 직접 한다 — 여기는 읽기만 한다.
-  var MANAGER_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTu2WevRPjPUGdzH4woPBFa-pgIbSFk4yKHi74OvYU87opA8H5aepK4qUt12IVNhO0Xdyn25JANHWSb/pub?gid=1868901458&single=true&output=csv';
+  // 시트를 '웹에 게시'하면 로그인 없이 누구나 받을 수 있어서, n8n 워크플로우 「정산ax 시트 CSV」가
+  // 회사 계정으로 시트를 읽어 CSV로 돌려주게 바꿨다. n8n은 사내망에서만 열린다.
+  // 담당자 변경은 이 콘솔이 아니라 "정산 AX - 담당자 배정" 시트에서 직접 한다 — 여기는 읽기만 한다.
+  var N8N_SHEET_CSV_URL = 'https://n8n.miridih.com/webhook/settlement-sheet-csv';
+  var MANAGER_SHEET_CSV_URL = N8N_SHEET_CSV_URL + '?src=manager';
 
-  // "정산 AX" 시트(정산 라인아이템)를 파일 → 공유 → 웹에 게시로 내보낸 CSV 링크.
-  // 컬럼 순서: ITEM_ID, 업체명, PARTNER_ID, 정산년월, 주문번호, 주문생성일, 정산기준시각,
-  //           상품번호, 항목설명, 수량, 판매가, 정산금, 정산유형, 상태, 상품옵션
-  var SETTLEMENT_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSRe2Ys3XlT8PLAFKF9QKeS3pjhy7jv61ReYhsRbVv1UYkZN9DineJkaV3qEMlQTS2KzgZDnGUi3bI8/pub?gid=1229201954&single=true&output=csv';
+  // "정산 데이터" 시트(정산 라인아이템). 컬럼 순서: ITEM_ID, 업체명, PARTNER_ID, 정산년월, 주문번호, 주문생성일,
+  //           정산기준시각, 상품번호, 항목설명, 수량, 판매가, 정산금, 정산유형, 상태, 상품옵션, VAT포함
+  var SETTLEMENT_SHEET_CSV_URL = N8N_SHEET_CSV_URL + '?src=data';
 
   function parseCsv(text){
     // 콤마/따옴표/개행을 포함한 필드까지 다루는 최소 CSV 파서 (RFC4180 기준).
@@ -846,7 +899,7 @@
   }
 
   /* =================================================================
-     정산 데이터 — 구글시트(웹에 게시된 CSV) 읽기 전용 동기화
+     정산 데이터 — 구글시트(n8n 경유 CSV) 읽기 전용 동기화
      정산 실행 탭의 다운로드는 이 데이터를 그대로 필터링해서 만든다.
      데이터 수정은 이 콘솔이 아니라 저 시트에서(추출 파이프라인을 통해) 한다.
   ================================================================= */
@@ -928,17 +981,32 @@
     }
   }
 
+  // 정산 데이터 시트는 10만 행이 넘어 한 번에 받으면 응답이 끊긴다 → 행 범위로 나눠 받아 이어 붙인다.
+  var SETTLEMENT_CHUNK_ROWS = 20000;
+  function fetchSettlementRowsInChunks(){
+    var all = [];
+    function step(k){
+      var url = SETTLEMENT_SHEET_CSV_URL + '&start=' + (1 + k * SETTLEMENT_CHUNK_ROWS) + '&rows=' + SETTLEMENT_CHUNK_ROWS;
+      return fetch(url, { cache: 'no-store' })
+        .then(function(res){
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function(text){
+          var rows = parseCsv(text);
+          for (var i = 0; i < rows.length; i++) all.push(rows[i]);
+          if (rows.length < SETTLEMENT_CHUNK_ROWS || k >= 49) return all;
+          return step(k + 1);
+        });
+    }
+    return step(0);
+  }
   function refreshSettlementSheet(){
     setSettlementSyncUi('loading');
     settlementLoaded = false;
     updateSummary();
-    return fetch(SETTLEMENT_SHEET_CSV_URL, { cache: 'no-store' })
-      .then(function(res){
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      })
-      .then(function(text){
-        var rows = parseCsv(text);
+    return fetchSettlementRowsInChunks()
+      .then(function(rows){
         applySettlementRowsFromSheet(rows);
         settlementLoaded = true;
         setSettlementSyncUi('ok');
@@ -1869,6 +1937,111 @@
       document.getElementById(target.els.saveBtn).disabled = true;
       setBulkDirName(target, '지원되지 않는 브라우저');
     }
+  });
+
+
+  /* =================================================================
+     PANEL: 정산시트 기입 — n8n(settlement-sheetfill)이 계산한 붙여넣기 값을 보여주고 복사
+  ================================================================= */
+  var N8N_SHEETFILL_URL = 'https://n8n.miridih.com/webhook/settlement-sheetfill';
+  var SHEET_LINKS = {
+    jh: 'https://docs.google.com/spreadsheets/d/1piPFPAnGLZUJnHYX-sYITBNSI3jtWrMTBOPssBh-UgA/edit',
+    ws: 'https://docs.google.com/spreadsheets/d/1zrmmpNfkntjWnlwKb_pob0Us7lY8L4NgO-wjOgPp6Ic/edit'
+  };
+  var fillData = null;
+
+  (function initFillPeriod(){
+    var fy = document.getElementById('fill-year'), fm = document.getElementById('fill-month');
+    fy.innerHTML = yearSelect.innerHTML; fy.value = yearSelect.value;
+    fm.innerHTML = monthSelect.innerHTML; fm.value = monthSelect.value;
+  })();
+
+  function fillPeriod(){
+    var y = document.getElementById('fill-year').value, m = document.getElementById('fill-month').value;
+    return y + '-' + pad(m);
+  }
+  function fillStatusLabel(st){
+    return { db:'DB값', same:'기존과 같음', diff:'기존과 다름', 'diff-kept':'다름(기존 유지)', kept:'기존 유지', none:'', nodata:'데이터 없음' }[st] || st;
+  }
+  function renderFillCard(key, d){
+    var el = document.getElementById('fill-' + key);
+    var title = key === 'jh' ? '정산현황 시트' : '외주사 정산 시트';
+    var sub = key === 'jh' ? '정산액(VAT포함) 1열' : '월 정산 · 월 매출 2열';
+    var head = '<h2>' + title + ' <a class="link-btn" style="font-size:12px;font-family:var(--font-body);" href="' + SHEET_LINKS[key] + '" target="_blank" rel="noopener">시트 열기 ↗</a></h2><div class="sub">' + sub + '</div>';
+    if (!d){ el.innerHTML = head + '<div class="fill-empty">만들 수 있는 값이 없습니다. 위 경고를 확인하세요.</div>'; return; }
+    var lineCount = d.text.split('\n').length;
+    var rows = d.rows || [];
+    var firstRow = rows[0], lastRow = rows[rows.length - 1];
+    var diffs = rows.filter(function(r){ return r.status === 'diff' || r.status === 'diff-kept'; });
+    var two = key === 'ws';
+    var steps = '<ol class="fill-steps">' +
+      '<li>' + title + ' › <b>「' + escapeHtml(d.tab) + '」</b> 탭을 엽니다.</li>' +
+      '<li><b>' + d.startCell + '</b> 셀을 클릭합니다.</li>' +
+      '<li>아래 <b>[복사]</b>를 누른 뒤 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> (맥: <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>, 값만 붙여넣기)</li>' +
+      '<li>붙여넣은 뒤 첫 행·마지막 행 업체가 맞는지 확인합니다.</li></ol>';
+    var range = '<div class="fill-range"><span class="cell">' + d.startCell + '</span><span class="meta">부터 붙여넣기 · ' + d.startCell + ':' + d.endCell + ' (' + lineCount + '행' + (two ? ' × 2열' : '') + ')</span></div>';
+    var copy = '<div><button class="btn primary" type="button" data-copy="' + key + '">복사</button><span class="copy-done" id="fill-copied-' + key + '" style="display:none">복사됨 — ' + d.startCell + ' 셀에 붙여넣으세요</span></div>';
+    var check = (firstRow && lastRow) ? '<div class="fill-check">확인용: 첫 행 <b>' + firstRow.row + '행 ' + escapeHtml(firstRow.name) + '</b> → 마지막 <b>' + lastRow.row + '행 ' + escapeHtml(lastRow.name) + '</b></div>' : '';
+    var diffHtml = '';
+    if (diffs.length){
+      diffHtml = '<details class="fill-diff" open><summary style="color:var(--warning);">⚠ 시트 기존 값과 다른 칸 ' + diffs.length + '건' + (fillData && fillData.keep ? ' (기존 값 유지됨)' : ' (DB 값으로 덮어씀)') + '</summary><div class="table-wrap" style="margin-top:8px;"><table class="fill"><thead><tr><th>행</th><th>업체</th><th>DB 값</th><th>시트 기존</th>' + (two ? '<th>DB 매출</th><th>기존 매출</th>' : '') + '</tr></thead><tbody>' +
+        diffs.map(function(r){
+          return '<tr class="diff"><td class="rowno">' + r.row + '</td><td>' + escapeHtml(r.name) + '</td><td class="num">' + escapeHtml(r.value) + '</td><td class="num">' + escapeHtml(r.existing) + '</td>' + (two ? '<td class="num">' + escapeHtml(r.value2) + '</td><td class="num">' + escapeHtml(r.existing2) + '</td>' : '') + '</tr>';
+        }).join('') + '</tbody></table></div></details>';
+    }
+    var preview = '<details class="fill-preview"><summary>업체별 값 미리보기 (' + rows.length + '개 업체)</summary><div class="table-wrap"><table class="fill"><thead><tr><th>행</th><th>업체</th><th>' + (two ? '정산' : '정산액') + '</th>' + (two ? '<th>매출</th>' : '') + '<th>구분</th></tr></thead><tbody>' +
+      rows.map(function(r){
+        var isDiff = r.status === 'diff' || r.status === 'diff-kept';
+        return '<tr' + (isDiff ? ' class="diff"' : '') + '><td class="rowno">' + r.row + '</td><td>' + escapeHtml(r.name) + '</td><td class="num">' + escapeHtml(r.value) + '</td>' + (two ? '<td class="num">' + escapeHtml(r.value2) + '</td>' : '') + '<td>' + fillStatusLabel(r.status) + '</td></tr>';
+      }).join('') + '</tbody></table></div></details>';
+    el.innerHTML = head + steps + range + copy + check + diffHtml + preview;
+  }
+  function copyText(text){
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function(resolve, reject){
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? resolve() : reject(new Error('copy failed')); } catch(e){ reject(e); }
+      document.body.removeChild(ta);
+    });
+  }
+  function loadFillData(){
+    var btn = document.getElementById('btn-fill-load');
+    var status = document.getElementById('fill-status');
+    var banner = document.getElementById('fill-banner');
+    var period = fillPeriod();
+    var keep = document.getElementById('fill-keep').checked;
+    btn.disabled = true;
+    status.textContent = period + ' 자료 불러오는 중… (DB 집계 + 시트 행 순서 확인)';
+    banner.style.display = 'none';
+    fetch(N8N_SHEETFILL_URL + '?period=' + encodeURIComponent(period) + (keep ? '&keep=1' : ''), { cache: 'no-store' })
+      .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function(data){
+        fillData = data;
+        renderFillCard('jh', data.jh);
+        renderFillCard('ws', data.ws);
+        if (data.warnings && data.warnings.length){
+          document.getElementById('fill-banner-text').textContent = data.warnings.join(' / ');
+          banner.style.display = 'flex';
+        }
+        status.textContent = data.period + ' 기준 · ' + formatMdHm(new Date(data.generatedAt)) + ' 생성' + (data.keep ? ' · 기존 입력값 유지' : '');
+      })
+      .catch(function(err){
+        status.textContent = '불러오기 실패 (' + (err && err.message ? err.message : '네트워크 오류') + ') — 잠시 후 다시 시도해 주세요.';
+      })
+      .then(function(){ btn.disabled = false; });
+  }
+  document.getElementById('btn-fill-load').addEventListener('click', loadFillData);
+  document.getElementById('panel-sheets').addEventListener('click', function(e){
+    var b = e.target.closest('[data-copy]');
+    if (!b || !fillData) return;
+    var key = b.getAttribute('data-copy'), d = fillData[key];
+    if (!d) return;
+    copyText(d.text).then(function(){
+      var done = document.getElementById('fill-copied-' + key);
+      done.style.display = "inline";
+      setTimeout(function(){ done.style.display = "none"; }, 6000);
+    }, function(){ window.alert('복사에 실패했습니다. 브라우저 권한을 확인해 주세요.'); });
   });
 
   /* =================================================================
