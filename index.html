@@ -1347,7 +1347,7 @@
   // 함께 정리했다 — 지금은 로컬 폴더 저장용인 'bulk'/'bulkArchive'만 쓴다.
   var SETTLEMENT_EXCLUDE_COLS = {
     // 업체별 로컬 폴더 일괄 저장용(교부용): 판매가 + 내부 식별자 + 파일명에 이미 담기는 업체명/정산년월 제외
-    bulk: ['판매가', 'ITEM_ID', 'PARTNER_ID', '업체명', '정산년월', 'VAT포함', 'vat포함'],
+    bulk: ['판매가', 'ITEM_ID', 'PARTNER_ID', '업체명', '정산년월', 'VAT포함', 'vat포함', '목코드'],
     // 업체별 로컬 폴더 일괄 저장용(내부 아카이빙용): 내부 식별자 + 업체명/정산년월만 제외(판매가 포함)
     bulkArchive: ['ITEM_ID', 'PARTNER_ID', '업체명', '정산년월', 'VAT포함', 'vat포함']
   };
@@ -1361,9 +1361,35 @@
       var i = SETTLEMENT_HEADER.indexOf(name);
       if (i !== -1) dropIdx[i] = true;
     });
-    var header = SETTLEMENT_HEADER.filter(function(_, i){ return !dropIdx[i]; });
+    // 칼럼 순서: 시트 순서 그대로 + 목코드는 상품옵션 바로 앞으로 옮긴다
+    var order = [];
+    SETTLEMENT_HEADER.forEach(function(h, i){ if (!dropIdx[i] && h !== '목코드') order.push(i); });
+    var mockIdx = SETTLEMENT_HEADER.indexOf('목코드');
+    if (mockIdx !== -1 && !dropIdx[mockIdx]){
+      var optPos = order.indexOf(SETTLEMENT_HEADER.indexOf('상품옵션'));
+      if (optPos === -1) order.push(mockIdx); else order.splice(optPos, 0, mockIdx);
+    }
+    var header = order.map(function(i){ return SETTLEMENT_HEADER[i]; });
     var matched = filterSettlementRows(vendor, cond);
-    var rows = matched.map(function(r){ return r.filter(function(_, i){ return !dropIdx[i]; }); });
+    var rows = matched.map(function(r){ return order.map(function(i){ return r[i]; }); });
+    // 내부용: 맨 오른쪽에 마진 = (판매가 - VAT포함 공급가) / 판매가. 공급가(정산금)는 업체 VAT 설정에 따라 VAT포함으로 환산
+    if (kind === 'bulkArchive'){
+      header = header.concat(['마진']);
+      var iSale = SETTLEMENT_IDX['판매가'], iSettle = SETTLEMENT_IDX['정산금'];
+      var iVat = SETTLEMENT_IDX['VAT포함'] != null ? SETTLEMENT_IDX['VAT포함'] : SETTLEMENT_IDX['vat포함'];
+      rows = rows.map(function(row, k){
+        var r = matched[k];
+        var saleRaw = iSale != null ? String(r[iSale] == null ? '' : r[iSale]).trim() : '';
+        var sale = parseAmount(saleRaw);
+        var margin = null;
+        if (saleRaw !== '' && sale !== 0){
+          var vat = iVat != null ? String(r[iVat] || '').trim().toUpperCase() : 'Y';
+          var cost = parseAmount(r[iSettle]) * (vat === 'N' ? 1.1 : 1);
+          margin = Math.round((sale - cost) / sale * 10000) / 10000;
+        }
+        return row.concat([margin]);
+      });
+    }
     return { header: header, rows: rows, matchedCount: matched.length };
   }
 
@@ -1659,7 +1685,7 @@
   var ITEM_HEADER_DISPLAY = {
     '주문번호': '주문번호', '주문생성일': '주문 생성일', '정산기준시각': '정산 기준시각',
     '상품번호': '상품번호', '항목설명': '항목 설명', '수량': '수량', '판매가': '판매가',
-    '정산금': '정산금', '정산유형': '정산 유형', '상태': '상태', '상품옵션': '상품 옵션'
+    '정산금': '정산금', '정산유형': '정산 유형', '상태': '상태', '상품옵션': '상품 옵션', '목코드': '목코드', '마진': '마진'
   };
   var ITEM_NUMERIC_COLUMNS = ['주문번호', '상품번호', '수량', '판매가', '정산금'];
   var STATUS_DISPLAY_MAP = { '정산대기': '정산 대기' }; // 그 외 값(묶음완료/지급완료)은 그대로 통과
@@ -1754,6 +1780,7 @@
     var optionColIndex = itemTable.header.indexOf('상품 옵션');
     var amountColIndex = itemTable.header.indexOf('정산금');
     var salePriceColIndex = itemTable.header.indexOf('판매가');
+    var marginColIndex = itemTable.header.indexOf('마진');
     var itemMoneyCols = amountColIndex === -1 ? [] : [amountColIndex];
     if (salePriceColIndex !== -1) itemMoneyCols.push(salePriceColIndex);
 
@@ -1762,7 +1789,7 @@
       meta: {
         summaryMoneyRows: moneyRows, summaryMoneyCols: [2, 3, 4, 5, 6, 7],
         itemHeaderRowIndex: itemHeaderRowIndex, itemDataStartRow: itemDataStartRow, itemDataRowCount: itemTable.rows.length,
-        optionColIndex: optionColIndex, itemMoneyCols: itemMoneyCols
+        optionColIndex: optionColIndex, itemMoneyCols: itemMoneyCols, marginColIndex: marginColIndex
       }
     };
   }
@@ -1794,6 +1821,10 @@
     });
     for (var dr = meta.itemDataStartRow; dr < meta.itemDataStartRow + meta.itemDataRowCount; dr++){
       meta.itemMoneyCols.forEach(function(c){ formatIfNumber(XLSX.utils.encode_cell({ r: dr, c: c })); });
+      if (meta.marginColIndex != null && meta.marginColIndex !== -1){
+        var mc = ws[XLSX.utils.encode_cell({ r: dr, c: meta.marginColIndex })];
+        if (mc && typeof mc.v === 'number') mc.z = '0.0%';
+      }
     }
   }
 
@@ -1840,11 +1871,13 @@
         var rawAll = filterSettlementRows(v, cond);
         var table = buildSettlementTable(v, cond, excludeKind);
         var rawSettleIdx = SETTLEMENT_IDX.정산기준시각;
+        var rawTypeIdx = SETTLEMENT_IDX.정산유형;
         var firstRaw = [], secondRaw = [], firstRows = [], secondRows = [];
         rawAll.forEach(function(r, i){
           var d = parseDateLoose(r[rawSettleIdx]);
           var day = d ? dayOfMonthInZone(d, SPLIT_TIMEZONE) : null;
-          if (day !== null && day <= 15){ firstRaw.push(r); firstRows.push(table.rows[i]); }
+          var isAdj = rawTypeIdx != null && String(r[rawTypeIdx] || '').trim() === '정산 보정';
+          if (!isAdj && day !== null && day <= 15){ firstRaw.push(r); firstRows.push(table.rows[i]); }
           else { secondRaw.push(r); secondRows.push(table.rows[i]); }
         });
         var vendorForName = { name: splitDef.name };
