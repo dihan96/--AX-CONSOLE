@@ -546,13 +546,23 @@
           <legend>④ 조회 조건</legend>
           <div class="field">
             <span class="field-label">정산유형</span>
-            <div class="checkbox-grid" id="type-checks">
-              <label class="check-item"><input type="checkbox" value="sale" checked> 상품 판매</label>
-              <label class="check-item"><input type="checkbox" value="refund" checked> 상품 환불</label>
-              <label class="check-item"><input type="checkbox" value="delivery" checked> 배송비</label>
-              <label class="check-item"><input type="checkbox" value="deliveryRefund" checked> 배송비 환불</label>
-              <label class="check-item"><input type="checkbox" value="adjustment" checked> 정산 보정</label>
+            <div id="type-checks">
+              <div class="checkbox-grid">
+                <label class="check-item"><input type="checkbox" value="sale" checked> 상품 판매</label>
+                <label class="check-item"><input type="checkbox" value="refund" checked> 상품 환불</label>
+                <label class="check-item"><input type="checkbox" value="delivery" checked> 배송비</label>
+                <label class="check-item"><input type="checkbox" value="deliveryRefund" checked> 배송비 환불</label>
+              </div>
+              <div style="margin-top:14px;">
+                <label class="check-item"><input type="checkbox" value="adjustment" checked> <b>보정건 추가 조회</b> <span class="badge ok" style="margin-left:4px;">+15일</span></label>
+              </div>
             </div>
+            <ul class="hint" style="margin:8px 0 0;padding-left:18px;line-height:1.7;">
+              <li>인트라 "보정건 추가 조회 +15일"과 같습니다. 조회 기간이 끝난 <b>다음 날부터 15일</b> 안에 등록된 보정건이 포함됩니다. (9월 정산 → 10/1~10/15 등록 보정)</li>
+              <li>정산 기간 중(조회 기간 안)에 등록된 보정건은 포함되지 않습니다.</li>
+              <li><b>디지털준·진성온</b>은 1차(1~15일)를 따로 정산하므로, 이 콘솔에서는 <b>2차(16일~말일)</b> 판매·환불·배송비만 나옵니다. 보정은 위와 같이 다음 달 1~15일 등록분입니다.</li>
+              <li>체크를 풀면 파일에서 보정건만 빠집니다. 평소에는 켜둔 채로 쓰세요.</li>
+            </ul>
           </div>
           <p class="hint" id="type-warn" style="color:var(--stamp);display:none;">정산유형을 하나 이상 선택해야 합니다.</p>
         </fieldset>
